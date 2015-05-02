@@ -1,0 +1,3 @@
+[submodule "impa-shooter-res"]
+	path = res
+	url = git@github.com:snesgaard/impa-shooter-res.git
