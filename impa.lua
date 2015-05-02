@@ -30,6 +30,8 @@ local function turnface(c, f)
   return c.entity.face
 end
 
+local groundbuffer = 0.10
+
 --Impa
 impa = actor.new()
 
@@ -305,6 +307,7 @@ fsm.connect(impa.control, idleid, walkid).to(jumpid).when(
   function(c, f)
     if pressed(f, ' ') then
       latch(' ')
+      c.entity.onground = function() return false end
       return 3
     end
   end
@@ -312,7 +315,7 @@ fsm.connect(impa.control, idleid, walkid).to(jumpid).when(
 
 fsm.connectall(impa.control, ascendid).except(descendid, evadeid, arialfireid).when(
   function(c, f)
-    if not c.entity.ground and c.entity.vy > 0 then
+    if not c.entity.onground() and c.entity.vy > 0 then
       return 10
     end
   end
@@ -320,7 +323,7 @@ fsm.connectall(impa.control, ascendid).except(descendid, evadeid, arialfireid).w
 
 fsm.connectall(impa.control, descendid).except(ascendid, evadeid, arialfireid).when(
   function(c, f)
-    if not c.entity.ground and c.entity.vy <= 0 then
+    if not c.entity.onground() and c.entity.vy <= 0 then
       return 10
     end
   end
@@ -328,7 +331,7 @@ fsm.connectall(impa.control, descendid).except(ascendid, evadeid, arialfireid).w
 
 fsm.connect(impa.control, ascendid, descendid).to(idleid).when(
   function(c, f)
-    if c.entity.ground then
+    if c.entity.onground() then
       return 2
     end
   end
@@ -368,7 +371,7 @@ fsm.connect(impa.control, arialfireid).to(ascendid).when(
   function(c, f)
     local a = c.animations[arialfireid]
     local e = c.entity
-    if not a.playing and not e.ground then return 1 end
+    if not a.playing and not e.onground() then return 1 end
   end
 )
 
@@ -376,7 +379,7 @@ fsm.connect(impa.control, arialfireid).to(idleid).when(
   function(c, f)
     local a = c.animations[arialfireid]
     local e = c.entity
-    if not a.playing and e.ground then return 1 end
+    if not a.playing and e.onground() then return 1 end
   end
 )
 
@@ -396,8 +399,13 @@ impa.context.entity = newEntity(100, -100, 4, 12)
 impa.control.current = idleid
 
 impa.context.entity.ground = false
+impa.context.entity.onground = function() return false end
 impa.context.entity.mapCollisionCallback = function(e, _, _, cx, cy)
   e.ground = (cy and cy < e.y)
+  if cy and cy < e.y then
+    local t = love.timer.getTime()
+    e.onground = function() return love.timer.getTime() - t < groundbuffer end
+  end
 end
 
 return impa

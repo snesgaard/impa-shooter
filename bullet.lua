@@ -44,7 +44,7 @@ function newBullet(x, y, sx, face)
     local call = function()
       c.spawntime = -100000
     end
-    return {coolision.newAxisBox(e.x, e.y, e.wx, e.wy, call)}
+    return {coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, call)}
   end
   return bullet
 end

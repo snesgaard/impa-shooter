@@ -46,8 +46,8 @@ end
 local idleid = "idle"
 ac.visual[idleid] = basedraw
 
--- Charge state
-local chargingid = "charge"
+-- Charging state
+local chargingid = "charging"
 fsm.vertex(ac.control, chargingid,
   function(c, f)
   end,
@@ -68,6 +68,18 @@ ac.visual[chargingid] = function(c)
   love.graphics.pop()
 end
 
+-- Charge state
+local chargeid = "charge"
+fsm.vertex(ac.control, chargeid,
+  function(c, f)
+  end,
+  function(c, f)
+    local ch = c.charges
+    if ch < maxcharges then c.charges = ch + 1 end
+  end
+)
+ac.visual[chargeid] = basedraw
+
 -- Discharge state
 local dischargeid = "discharge"
 fsm.vertex(ac.control, dischargeid,
@@ -82,7 +94,7 @@ ac.visual[dischargeid] = basedraw
 -- Edges
 fsm.connect(ac.control, idleid, chargingid).to(dischargeid).when(
   function(c, f)
-    if pressed(f, "e") then
+    if pressed(f, "e") and c.charges > 0 then
       latch("e")
       return 2
     end
@@ -98,9 +110,14 @@ fsm.connect(ac.control, idleid).to(chargingid).when(
     if c.charges < maxcharges then return 1 end
   end
 )
-fsm.connect(ac.control, chargingid).to(idleid).when(
+fsm.connect(ac.control, chargingid).to(chargeid).when(
   function(c, f)
     if love.timer.getTime() - c.chargestart > chargetime then return 1 end
+  end
+)
+fsm.connect(ac.control, chargeid).to(idleid).when(
+  function(c, f)
+    return 1
   end
 )
 

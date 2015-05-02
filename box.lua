@@ -46,7 +46,7 @@ fsm.connect(box.control, dyingid).to("dead").when(
 )
 
 -- Init
-box.context.entity = newEntity(200, -100, 10, 20)
+box.context.entity = newEntity(150, -100, 10, 40)
 
 box.hitbox = function(id, c)
   local e = c.entity
@@ -55,7 +55,7 @@ box.hitbox = function(id, c)
     e.vx = (ck.x - e.x) * (-100)
     c.dead = love.timer.getTime()
   end
-  return {coolision.newAxisBox(e.x, e.y, e.wx, e.wy, cb)}
+  return {coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, cb)}
 end
 
 box.control.current = idleid
