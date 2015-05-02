@@ -126,4 +126,13 @@ ac.context.charges = maxcharges
 
 ac.control.current = idleid
 
+-- Global API
+actioncharges = {}
+actioncharges.usecharge = function(n)
+  local c = ac.context
+  if c.charges < n then return false end
+  c.charges = c.charges - n
+  return true
+end
+
 return ac

@@ -137,6 +137,8 @@ fsm.vertex(impa.control, arialfireid,
       else
         error("Face not defined")
       end
+    elseif a:getCurrentFrame() <= 1 then
+      c.entity.face = turnface(c, f)
     end
 
     local r = love.keyboard.isDown("right")
@@ -345,7 +347,7 @@ fsm.connect(impa.control, ascendid).to(descendid).when(
 
 fsm.connectall(impa.control, evadeid).when(
   function(c, f)
-    if pressed(f, 'lshift') then
+    if pressed(f, 'lshift') and actioncharges.usecharge(1) then
       latch('lshift')
       return 20
     end

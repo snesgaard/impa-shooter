@@ -13,29 +13,52 @@ function newBullet(x, y, sx, face)
   end)
   bullet.visual[liveid] = function(c)
     local e = c.entity
-    local x = e.x
-    local y = e.y
-    local w = e.wx
-    local h = e.wy
-    local p = {x - w, y - h, x - w, y + h, x + w, y + h, x + w, y - h,}
     --love.graphics.polygon("fill", p)
     local a = actor.drawsprite(e, c.animations[liveid])
   end
+  -- Impact state
+  local impactid = "impact"
+  fsm.vertex(bullet.control, impactid,
+    function(c, f)
+      local a = c.animations[impactid]
+      a:update(f.dt)
+      c.entity.vx = 0
+    end,
+    function(c, f)
+      local a = c.animations[impactid]
+      a:setMode("once")
+      a:reset()
+      a:play()
+    end
+  )
+  bullet.visual[impactid] = function(c)
+    local e = c.entity
+    --love.graphics.polygon("fill", p)
+    local a = actor.drawsprite(e, c.animations[impactid])
+  end
   -- Dead state
   local deadid = "dead"
-  fsm.connect(bullet.control, liveid).to(deadid).when(function(c, f)
+  fsm.connect(bullet.control, liveid).to(impactid).when(function(c, f)
     if love.timer.getTime() - c.spawntime > 1.0 then return 1 end
   end)
+  fsm.connect(bullet.control, impactid).to(deadid).when(
+    function(c, f)
+      local a = c.animations[impactid]
+      if not a.playing then return 1 end
+    end
+  )
 
   --Init
   bullet.control.current = liveid
   bullet.context.animations = {
     [liveid] = loadanimation("res/bullet.png", 5, 3, 0.05, 0),
+    [impactid] = loadanimation("res/bulletimpact.png", 15, 9, 0.025, 0)
   }
   bullet.context.entity = newEntity(x, y, 2.5 * sx, 1, "false")
   bullet.context.entity.face = face
   bullet.context.entity.mapCollisionCallback = function(e, _, _, cx, cy)
     e._do_gravity = (cx or cy)
+    if (cx or cy) then bullet.context.spawntime = -100000 end
   end
   bullet.context.spawntime = love.timer.getTime()
   bullet.context.entity.vx = 250 * sx
@@ -90,7 +113,7 @@ function newGunExhaust(x, y, face)
 
   --Init
   ge.context.animations = {
-    [liveid] = loadanimation("res/gunexhaust.png", 10, 9, 0.05, 0),
+    [liveid] = loadanimation("res/gunexhaust.png", 10, 9, 0.05, 0)
   }
 
   fsm.traverse(ge.control, liveid, ge.context, {})
