@@ -1,3 +1,6 @@
 [submodule "impa-shooter-res"]
 	path = res
 	url = git@github.com:snesgaard/impa-shooter-res.git
+[submodule "modules/Simple-Tiled-Implementation"]
+	path = modules/sti
+	url = https://github.com/karai17/Simple-Tiled-Implementation
