@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<map version="1.0" orientation="orthogonal" renderorder="right-down" width="40" height="40" tilewidth="16" tileheight="16" nextobjectid="1">
+ <tileset firstgid="1" name="testset" tilewidth="16" tileheight="16">
+  <image source="res/tile.png" width="80" height="80"/>
+  <tile id="0">
+   <properties>
+    <property name="left" value="16"/>
+    <property name="right" value="16"/>
+   </properties>
+  </tile>
+ </tileset>
+ <layer name="game" width="40" height="40">
+  <data encoding="base64" compression="zlib">
+   eJztxaENAAAMw7Du/6dHS8cGHMlKIkn62NQBAAAAgJsF/oYE2A==
+  </data>
+ </layer>
+</map>
