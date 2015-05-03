@@ -33,6 +33,7 @@ function love.load()
     box = require "box",
     impa = require "impa",
     actioncharges = require "actioncharges",
+    health = require "health",
     bullet = bullet,
   }
   _global.map = sti.new("test")

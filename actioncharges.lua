@@ -22,23 +22,39 @@ local function latch(k)
   latchtable[k] = love.timer.getTime()
 end
 
-local function drawcharges(n)
+local maxcharges = 4
+local chargetime = 1
+local barh = 5
+local barw = 190
+
+local function drawcharges(n, x, y)
   love.graphics.setColor(0, 100, 255, 255)
-  for x = 1, n do
-    love.graphics.circle("fill", (x - 1) * 50 + 30, 30, 20, 20)
+  for i = 1, n do
+    love.graphics.circle("fill", (i - 1) * 50 + x, y, 20, 20)
   end
   love.graphics.setColor(255, 255, 255, 255)
 end
 
-local maxcharges = 4
-local chargetime = 1
+local function drawchargeframe(x, y, s)
+  love.graphics.setColor(0, 100, 255, 255)
+  local w = 2
+  love.graphics.translate(x, y)
+  love.graphics.rectangle("fill", -w, -w, barw + 2 * w, w)
+  love.graphics.rectangle("fill", -w, barh, barw + 2 * w, w)
+  love.graphics.rectangle("fill", -w, 0, w, barh)
+  love.graphics.rectangle("fill", barw, 0, w, barh)
+  love.graphics.rectangle("fill", 0, 0, barw * s, barh)
+  love.graphics.origin()
+  love.graphics.setColor(255, 255, 255, 255)
+end
 
 local ac = actor.new()
 
 local basedraw = function(c)
   love.graphics.push()
   love.graphics.origin()
-  drawcharges(c.charges)
+  drawcharges(c.charges, c.x, c.y)
+  drawchargeframe(c.x - 20, c.y + 20 + barh, 0)
   love.graphics.pop()
 end
 
@@ -58,13 +74,14 @@ fsm.vertex(ac.control, chargingid,
 ac.visual[chargingid] = function(c)
   love.graphics.push()
   love.graphics.origin()
-  drawcharges(c.charges)
-  local w = 190
-  local h = 5
-  local y = 50 + h
-  local x = 10
+  drawcharges(c.charges, c.x, c.y)
+  local w = barw
+  local h = barh
+  local y = c.y + 20 + h
+  local x = c.x - 20
   local s = (love.timer.getTime() - c.chargestart) / chargetime
-  love.graphics.rectangle("fill", x, y, w * s, h)
+  drawchargeframe(x, y, s)
+  --love.graphics.rectangle("fill", x, y, w * s, h)
   love.graphics.pop()
 end
 
@@ -92,6 +109,7 @@ fsm.vertex(ac.control, dischargeid,
 ac.visual[dischargeid] = basedraw
 
 -- Edges
+--[[
 fsm.connect(ac.control, idleid, chargingid).to(dischargeid).when(
   function(c, f)
     if pressed(f, "e") and c.charges > 0 then
@@ -100,6 +118,7 @@ fsm.connect(ac.control, idleid, chargingid).to(dischargeid).when(
     end
   end
 )
+--]]
 fsm.connect(ac.control, dischargeid).to(idleid).when(
   function(c, f)
     return 1
@@ -123,6 +142,9 @@ fsm.connect(ac.control, chargeid).to(idleid).when(
 
 -- Init
 ac.context.charges = maxcharges
+ac.context.x = 600
+ac.context.y = 30
+
 
 ac.control.current = idleid
 

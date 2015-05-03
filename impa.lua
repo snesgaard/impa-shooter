@@ -3,7 +3,7 @@ require "entity"
 require "bullet"
 
 local keybuffer = {
-  [" "] = 0.3
+  [" "] = 0.15
 }
 
 local latchtable = {

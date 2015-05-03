@@ -3,7 +3,7 @@ require "actor"
 function newBullet(x, y, sx, face)
   sx = sx or 1
   -- Bullet
-  bullet = actor.new()
+  local bullet = actor.new()
   -- Live state
   local liveid = "live"
   fsm.vertex(bullet.control, liveid,
@@ -66,6 +66,7 @@ function newBullet(x, y, sx, face)
     local e = c.entity
     local call = function()
       c.spawntime = -100000
+      print "impact"
     end
     return {coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, call)}
   end
