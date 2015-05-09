@@ -40,6 +40,7 @@ function fsm.update(f, context, framedata)
 end
 
 function fsm.traverse(f, sid, context, framedata)
+  framedata = framedata or {}
   bs = f.vertex[f.current]
   ss = f.vertex[sid]
   if bs and bs.stop then bs.stop(context, framedata) end
