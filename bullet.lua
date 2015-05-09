@@ -66,9 +66,10 @@ function newBullet(x, y, sx, face)
     local e = c.entity
     local call = function()
       c.spawntime = -100000
-      print "impact"
     end
-    return {coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, call)}
+    local b = coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, call)
+    b.damage = 1
+    return {b}
   end
   return bullet
 end

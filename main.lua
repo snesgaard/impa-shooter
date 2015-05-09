@@ -5,6 +5,7 @@ local sti = require ("modules/sti")
 require ("modules/tilephysics")
 local misc = require ("modules/misc")
 require ("modules/coolision")
+require "box"
 
 function loadanimation(path, ...)
   local im = love.graphics.newImage(path)
@@ -30,12 +31,15 @@ function love.load()
 
   --Global init
   _global.actors = {
-    box = require "box",
+    --box = newBox(200, -100),
     impa = require "impa",
     actioncharges = require "actioncharges",
     health = require "health",
     bullet = bullet,
   }
+  for i = 1, 20 do
+    table.insert(_global.actors, newBox(200 + i * 50, -100))
+  end
   _global.map = sti.new("test")
   misc.setPosSTIMap(_global.map, 0, 0)
 end
