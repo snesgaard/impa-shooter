@@ -1,3 +1,4 @@
+require "util"
 require "math"
 require ("modules/AnAL")
 require "actor"
@@ -7,6 +8,7 @@ local misc = require ("modules/misc")
 require ("modules/coolision")
 require "box"
 
+-- Utilities
 function loadanimation(path, ...)
   local im = love.graphics.newImage(path)
   return newAnimation(im, ...)
@@ -18,6 +20,10 @@ function xor(a, b)
   return (a or b) and (not (a and b))
 end
 
+function getplayer(g)
+  return g.actors.impa
+end
+
 function love.keypressed(key, isrepeat)
   framedata.keyboard[key] = love.timer.getTime()
   --print(key)
@@ -27,9 +33,8 @@ function love.load()
   local filter = "nearest"
   love.graphics.setDefaultFilter(filter, filter, 0)
   framedata = {keyboard = {}}
-  _global = {}
-
   --Global init
+  _global = {}
   _global.actors = {
     --box = newBox(200, -100),
     impa = require "impa",
@@ -37,7 +42,7 @@ function love.load()
     health = require "health",
     bullet = bullet,
   }
-  for i = 1, 20 do
+  for i = 1, 4 do
     table.insert(_global.actors, newBox(200 + i * 50, -100))
   end
   _global.map = sti.new("test")
@@ -56,21 +61,73 @@ function love.update(dt)
     end
   end)
 
-  -- Hitbox collision
-  local boxes = {}
-  -- Gather submitted hitboxes from actors
+  -- Collision detection
+  -- Collect + group all seekers and hailers
+  local hailers = {}
+  local seekers = {}
+  -- Utility for inserting a typed box into a subtable
+  local inserttype = function(t, type, box)
+    if not type then return end
+    local sbt = t[type] or {}
+    table.insert(sbt, box)
+    t[type] = sbt
+  end
+  -- Iterate through all actors, allowing them to submit hitboxes for the update
+  -- Hitboxes are divided into seekers and hailers
   table.foreach(_global.actors,
     function(_, a)
       local submit = a.hitbox(a.control.current, a.context) or {}
       table.foreach(submit,
-        function(_, subbox)
-          table.insert(boxes, subbox)
+        function(_, v)
+          inserttype(seekers, v.seek, v.box)
+          inserttype(hailers, v.hail, v.box)
         end
       )
     end
   )
-  -- Run collision detection and callbacks
-  local collisiontable = coolision.collisiondetect(boxes, 1, 0)
+  -- Now go through all hailers
+  table.foreach(hailers,
+    function(type, subhailers)
+      -- Find correspoding seekers (ala signal and slot)
+      local subseekers = seekers[type] or {}
+      -- Now do a grouped collision detection
+      local collisiontable = coolision.groupedcd(subseekers, subhailers, 1, 0)
+      -- Resolve the collisions
+      table.foreach(collisiontable,
+        function(boxa, collisions)
+          table.foreach(collisions,
+            function(_, boxb)
+              if boxa.hitcallback then boxa.hitcallback(boxb) end
+              if boxb.hitcallback then boxb.hitcallback(boxa) end
+            end
+          )
+        end
+      )
+    end
+  )
+  --[[
+  local boxtypes = {}
+  local inserttype = function(type, box)
+    if not type then return end
+
+    local sbt = boxtypes[type] or {}
+    table.insert(sbt, box)
+    boxtypes[type] = sbt
+  end
+  table.foreach(_global.actors,
+    function(_, a)
+      local submit = a.hitbox(a.control.current, a.context) or {}
+      table.foreach(submit,
+        function(_, v)
+          inserttype(v.type, v)
+        end
+      )
+    end
+  )
+  local bulletbox = boxtypes[1] or {}
+  local boxbox = boxtypes[0] or {}
+  -- print(#bulletbox, #boxbox)
+  local collisiontable = coolision.groupedcd(bulletbox, boxbox, 1, 0)
   table.foreach(collisiontable,
     function(boxa, collisions)
       table.foreach(collisions,
@@ -81,7 +138,7 @@ function love.update(dt)
       )
     end
   )
-
+  --]]
   table.foreach(_global.actors,
     function(k, a)
       actor.update(a, framedata)
@@ -100,10 +157,8 @@ end
 function love.draw()
   local s = 2
   love.graphics.scale(s)
-  -- HACK, replace with actual love window dim API
   local w = love.graphics.getWidth()
   local h = love.graphics.getHeight()
-  -- end-of-HACK
   local ie = _global.actors.impa.context.entity
   local map = _global.map
   local mapwidth = map.width * map.tilewidth

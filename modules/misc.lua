@@ -7,7 +7,7 @@ local misc = {
     map.x = x
     map.y = y
     return map
-  end
+  end,
 }
 
 return misc

@@ -68,8 +68,11 @@ function newBullet(x, y, sx, face)
       c.spawntime = -100000
     end
     local b = coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, call)
+    -- HACK: Should be a bit more controlled
     b.damage = 1
-    return {b}
+    local seek = actor.types.enemybody
+    local hail = actor.types.allyprojectile
+    return {actor.taggedbox(b, hail, seek)}
   end
   return bullet
 end

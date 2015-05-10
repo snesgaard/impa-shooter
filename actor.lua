@@ -28,3 +28,18 @@ function actor.drawsprite(entity, animation)
     error("Face not defined in entity")
   end
 end
+
+actor.types = {
+  enemybody = 0,
+  allybody = 1,
+  neutralbody = 2,
+  enemyprojectile = 3,
+  allyprojectile = 4,
+}
+
+actor.taggedbox = function(box, hail, seek)
+  --if type(seek) ~= "table" then seek = {seek} end
+  --if type(hail) ~= "table" then hail = {hail} end
+
+  return {seek = seek, hail = hail, box = box}
+end
