@@ -4,24 +4,34 @@ local axisbox = require (path .. "axisbox")
 
 coolision = {}
 
-local function sort(axisboxtable, x, y)
-  local projectspan = function(box)
-    local lx, hx = axisbox.getboundx(box)
-    local ly, hy = axisbox.getboundy(box)
-    local lp = lx * x + ly * y
-    local hp = hx * x + hy * y
-    return math.min(lp, hp), math.max(lp, hp)
-  end
+local projectspan = function(box, x, y)
+  local lx, hx = axisbox.getboundx(box)
+  local ly, hy = axisbox.getboundy(box)
+  local lp = lx * x + ly * y
+  local hp = hx * x + hy * y
+  return math.min(lp, hp), math.max(lp, hp)
+end
 
+local function sort(axisboxtable, x, y)
   local axiscompare = function(boxa, boxb)
-    local la, ha = projectspan(boxa)
-    local lb, hb = projectspan(boxb)
+    local la, ha = projectspan(boxa, x, y)
+    local lb, hb = projectspan(boxb, x, y)
     return la < lb
   end
 
   table.sort(axisboxtable, axiscompare)
 
   return axisboxtable
+end
+
+local function groupedsort(axisboxtable, x, y)
+  local axiscompare = function(gboxa, gboxb)
+    local la, ha = projectspan(gboxa.box, x, y)
+    local lb, hb = projectspan(gboxb.box, x, y)
+    return la < lb
+  end
+
+  table.sort(axisboxtable, axiscompare)
 end
 
 local function xoverlaptest(boxa, boxb)
@@ -61,6 +71,51 @@ coolision.collisiondetect = function(axisboxtable, x, y)
     end
     if #cola > 0 then
       collisiontable[boxa] = cola
+    end
+  end
+
+  return collisiontable
+end
+
+coolision.groupedcd = function(seekers, hailers, x, y)
+  if #seekers == 0 or #hailers == 0 then return {} end
+  -- Concatenate tables and assign labels
+  local groupboxtable = {}
+  table.foreach(seekers,
+    function(k, v)
+      table.insert(groupboxtable, {isseeker = true, box = v})
+    end
+  )
+  table.foreach(hailers,
+    function(k, v)
+      table.insert(groupboxtable, {isseeker = false, box = v})
+    end
+  )
+  -- Sort with respect to specified axis
+  groupedsort(groupboxtable, x, y)
+  -- Seek collisions along sorted axis
+  local collisiontable = {}
+  for k, groupa in pairs(groupboxtable) do
+    local potentialcol = {}
+    for _, groupb in next, groupboxtable, k do
+      if xoverlaptest(groupa.box, groupb.box) then
+        -- Only add if grouping was different
+        if groupa.isseeker == not groupb.isseeker then
+          table.insert(potentialcol, groupb)
+        end
+      else
+        break
+      end
+    end
+    -- check for y collision and register
+    local cola = {}
+    for _, groupb in pairs(potentialcol) do
+      if yoverlaptest(groupa.box, groupb.box) then
+        table.insert(cola, groupb.box)
+      end
+    end
+    if #cola > 0 then
+      collisiontable[groupa.box] = cola
     end
   end
 
