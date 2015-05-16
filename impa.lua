@@ -32,7 +32,9 @@ end
 
 -- Defines
 local groundbuffer = 0.10
-local hurtduration = 0.5
+local hurtduration = 0.40
+local evadesampleperiod = 0.025
+local movespeed = 75
 local stateid = {
   idle = "idle",
   walk = "walk",
@@ -72,10 +74,10 @@ fsm.vertex(impa.control, stateid.walk,
 
     local r = love.keyboard.isDown("right")
     if r then
-      c.entity.vx = 75
+      c.entity.vx = movespeed
       c.entity.face = "right"
     else
-      c.entity.vx = -75
+      c.entity.vx = -movespeed
       c.entity.face = "left"
     end
    end,
@@ -152,9 +154,9 @@ fsm.vertex(impa.control, stateid.arialfire,
     local r = love.keyboard.isDown("right")
     local l = love.keyboard.isDown("left")
     if r and not l then
-      c.entity.vx = 50
+      c.entity.vx = movespeed
     elseif l and not r then
-      c.entity.vx = -50
+      c.entity.vx = -movespeed
     else
       c.entity.vx = 0
     end
@@ -196,10 +198,10 @@ fsm.vertex(impa.control, stateid.ascend,
     local r = love.keyboard.isDown("right")
     local l = love.keyboard.isDown("left")
     if r and not l then
-      c.entity.vx = 50
+      c.entity.vx = movespeed
       c.entity.face = "right"
     elseif l and not r then
-      c.entity.vx = -50
+      c.entity.vx = -movespeed
       c.entity.face = "left"
     else
       c.entity.vx = 0
@@ -221,10 +223,10 @@ fsm.vertex(impa.control, stateid.descend,
     local r = love.keyboard.isDown("right")
     local l = love.keyboard.isDown("left")
     if r and not l then
-      c.entity.vx = 50
+      c.entity.vx = movespeed
       c.entity.face = "right"
     elseif l and not r then
-      c.entity.vx = -50
+      c.entity.vx = -movespeed
       c.entity.face = "left"
     else
       c.entity.vx = 0
@@ -255,7 +257,7 @@ fsm.vertex(impa.control, stateid.evade,
 
     if c.sample() then
       local t = love.timer.getTime()
-      c.sample = function() return love.timer.getTime() - t > 0.05 end
+      c.sample = function() return love.timer.getTime() - t > evadesampleperiod end
       table.insert(c.trail, {face = e.face, x = e.x, y = e.y})
     end
   end,
@@ -264,7 +266,7 @@ fsm.vertex(impa.control, stateid.evade,
     c.evade_done = function() return love.timer.getTime() - t > 0.2 end
 
     c.trail = {}
-    c.sample = function() return love.timer.getTime() - t > 0.05 end
+    c.sample = function() return love.timer.getTime() - t > evadesampleperiod end
 
     c.entity.face = turnface(c, f)
   end
@@ -287,21 +289,17 @@ fsm.vertex(impa.control, stateid.hurt,
   function(c, f)
     c.hurtstart = love.timer.getTime()
     c.entity.vx = 0
-    c.entity.vy = 0
+    --c.entity.vy = 0
     c.hit = false
   end
 )
-local hurtblinkfrequency = 25.0 * math.pi
+local hurtblinkfrequency = 10.0 * math.pi * 2
 impa.visual[stateid.hurt] = function(c)
   local dt = love.timer.getTime() - c.hurtstart
   if math.sin(hurtblinkfrequency * dt) > 0 then
-    love.graphics.setColor(255, 255, 255, 255)
-  else
-    love.graphics.setColor(120, 0, 120, 200)
+    local a = c.animations[stateid.hurt]
+    actor.drawsprite(c.entity, a)
   end
-  local a = c.animations[stateid.hurt]
-  actor.drawsprite(c.entity, a)
-  love.graphics.setColor(255, 255, 255, 255)
 end
 
 -- Hitbox

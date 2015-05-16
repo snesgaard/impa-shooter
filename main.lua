@@ -44,8 +44,11 @@ function love.load()
   for i = 1, 4 do
     table.insert(_global.actors, newBox(150 + i * 50, -100))
   end
-  _global.map = sti.new("test")
+  _global.map = sti.new("res/rainylevel")
   misc.setPosSTIMap(_global.map, 0, 0)
+  -- Test for shader
+  local shaderstr = love.filesystem.read("res/shaders/rain.glsl")
+  shader = love.graphics.newShader(shaderstr)
 end
 
 
@@ -131,6 +134,8 @@ end
 function love.draw()
   local s = 2
   love.graphics.scale(s)
+  love.graphics.setBackgroundColor(70, 70, 120, 255)
+  love.graphics.setShader()
   local w = love.graphics.getWidth()
   local h = love.graphics.getHeight()
   local ie = _global.actors.impa.context.entity
@@ -148,4 +153,10 @@ function love.draw()
       actor.draw(a)
     end
   )
+  love.graphics.setShader(shader)
+  shader:send("campos", {x, y})
+  shader:send("fade", 0.1)
+  shader:send("time", love.timer.getTime())
+  love.graphics.origin()
+  love.graphics.rectangle("fill", 0, 0, w, h)
 end
