@@ -3,8 +3,10 @@ require "entity"
 require "boxbullet"
 require "bullet"
 
-local function boxBullet(x, y)
-  local b = newBullet(x, y, -0.5, "left")
+local function boxBullet(x, y, s)
+  local face = "right"
+  if s < 0 then face = "left" end
+  local b = newBullet(x, y, s, face)
 
   local visual = {}
   table.foreach(b.visual,
@@ -18,16 +20,22 @@ local function boxBullet(x, y)
   )
   b.visual = visual
 
-  local h = b.hitbox
-  b.hitbox = function(id, c)
-    local taggedboxes = h(id, c)
-    table.foreach(taggedboxes,
-      function(k, v)
-        v.seek = actor.types.allybody
-        v.hail = actor.types.enemyprojectile
-      end
-    )
+  local hitbox = {}
+  table.foreach(b.hitbox,
+  function(id, h)
+    hitbox[id] = function(c)
+      local taggedboxes = h(c)
+      table.foreach(taggedboxes,
+        function(k, v)
+          v.seek = {actor.types.allybody}
+          v.hail = {actor.types.enemyprojectile}
+        end
+      )
+      return taggedboxes
+    end
   end
+  )
+  b.hitbox = hitbox
 
   return b
 end
@@ -36,6 +44,7 @@ function newBox(x, y)
   -- Defines
   local maxfiretime = 7.0
   local minfiretime = 3.0
+  local scanarea = 100
 
   local box = actor.new()
   -- Idle state
@@ -65,7 +74,13 @@ function newBox(x, y)
     end,
     function(c, f)
       local e = c.entity
-      table.insert(_global.actors, boxBullet(e.x, e.y))
+      if c.playerlast then
+        if e.x - c.playerlast < 0 then
+          table.insert(_global.actors, boxBullet(e.x, e.y, 0.5))
+        else
+          table.insert(_global.actors, boxBullet(e.x, e.y, -0.5))
+        end
+      end
       c.dofire = function() return false end
     end
   )
@@ -119,7 +134,7 @@ function newBox(x, y)
   box.context.dofire = function() return false end
   box.context.entity = newEntity(x, y, 10, 40)
 
-  box.hitbox = function(id, c)
+  box.hitbox[idleid] = function(c)
     local e = c.entity
     local cb = function(ck)
       -- Hack
@@ -128,9 +143,23 @@ function newBox(x, y)
         c.dead = love.timer.getTime()
       end
     end
-    local b = coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, cb)
-    local hail = actor.types.enemybody
-    return {actor.taggedbox(b, hail)}
+
+    local body = actor.taggedbox(
+      coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, cb),
+      actor.types.enemybody
+    )
+
+    local scb = function(pb)
+      c.playerlast = pb.x + pb.w * 0.5
+    end
+
+    local scanbox = actor.taggedbox(
+      coolision.newAxisBox(e.x - scanarea, e.y + scanarea, scanarea * 2, scanarea * 2, scb),
+      nil,
+      actor.types.allybody
+    )
+
+    return {scanbox, body}
   end
 
   fsm.traverse(box.control, idleid, box.context)

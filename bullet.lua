@@ -62,7 +62,7 @@ function newBullet(x, y, sx, face)
   end
   bullet.context.spawntime = love.timer.getTime()
   bullet.context.entity.vx = 250 * sx
-  bullet.hitbox = function(id, c)
+  bullet.hitbox[liveid] = function(c)
     local e = c.entity
     local call = function()
       c.spawntime = -100000

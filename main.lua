@@ -36,14 +36,13 @@ function love.load()
   --Global init
   _global = {}
   _global.actors = {
-    --box = newBox(200, -100),
     impa = require "impa",
     actioncharges = require "actioncharges",
     health = require "health",
     bullet = bullet,
   }
   for i = 1, 4 do
-    table.insert(_global.actors, newBox(200 + i * 50, -100))
+    table.insert(_global.actors, newBox(150 + i * 50, -100))
   end
   _global.map = sti.new("test")
   misc.setPosSTIMap(_global.map, 0, 0)
@@ -76,11 +75,20 @@ function love.update(dt)
   -- Hitboxes are divided into seekers and hailers
   table.foreach(_global.actors,
     function(_, a)
-      local submit = a.hitbox(a.control.current, a.context) or {}
+      local makehitbox = a.hitbox[a.control.current] or function() return {} end
+      local submit = makehitbox(a.context)
       table.foreach(submit,
         function(_, v)
-          inserttype(seekers, v.seek, v.box)
-          inserttype(hailers, v.hail, v.box)
+          table.foreach(v.seek,
+            function(_, s)
+              inserttype(seekers, s, v.box)
+            end
+          )
+          table.foreach(v.hail,
+            function(_, h)
+              inserttype(hailers, h, v.box)
+            end
+          )
         end
       )
     end
@@ -105,40 +113,6 @@ function love.update(dt)
       )
     end
   )
-  --[[
-  local boxtypes = {}
-  local inserttype = function(type, box)
-    if not type then return end
-
-    local sbt = boxtypes[type] or {}
-    table.insert(sbt, box)
-    boxtypes[type] = sbt
-  end
-  table.foreach(_global.actors,
-    function(_, a)
-      local submit = a.hitbox(a.control.current, a.context) or {}
-      table.foreach(submit,
-        function(_, v)
-          inserttype(v.type, v)
-        end
-      )
-    end
-  )
-  local bulletbox = boxtypes[1] or {}
-  local boxbox = boxtypes[0] or {}
-  -- print(#bulletbox, #boxbox)
-  local collisiontable = coolision.groupedcd(bulletbox, boxbox, 1, 0)
-  table.foreach(collisiontable,
-    function(boxa, collisions)
-      table.foreach(collisions,
-        function(_, boxb)
-          if boxa.hitcallback then boxa.hitcallback(boxb) end
-          if boxb.hitcallback then boxb.hitcallback(boxa) end
-        end
-      )
-    end
-  )
-  --]]
   table.foreach(_global.actors,
     function(k, a)
       actor.update(a, framedata)

@@ -29,4 +29,14 @@ con.y = 30
 
 ctrl.current = idleid
 
+-- Global API
+health = {}
+health.reduce = function(n)
+  if con.health > n then
+    con.health = con.health - n
+    return true
+  end
+  return false
+end
+
 return hbar

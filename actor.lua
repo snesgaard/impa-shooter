@@ -3,7 +3,13 @@ require ("modules/fsm")
 actor = {}
 
 function actor.new()
-  return {control = fsm.new(), visual = {}, context = {}, hitbox = function(stateid, context) end}
+  local a = {
+    control = fsm.new(),
+    visual = {},
+    context = {},
+    hitbox = {},
+  }
+  return a
 end
 
 function actor.update(a, framedata)
@@ -38,8 +44,8 @@ actor.types = {
 }
 
 actor.taggedbox = function(box, hail, seek)
-  --if type(seek) ~= "table" then seek = {seek} end
-  --if type(hail) ~= "table" then hail = {hail} end
+  if type(seek) ~= "table" then seek = {seek} end
+  if type(hail) ~= "table" then hail = {hail} end
 
   return {seek = seek, hail = hail, box = box}
 end
