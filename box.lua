@@ -51,7 +51,7 @@ function newBox(x, y)
   local idleid = "idle"
   fsm.vertex(box.control, idleid,
     function(c, f)
-
+      c.playerlast = nil
     end,
     function(c, f)
       local dt = util.linterpolate(love.math.random(), minfiretime, maxfiretime)

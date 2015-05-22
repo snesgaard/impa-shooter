@@ -60,7 +60,13 @@ end
 
 -- Idle state
 local idleid = "idle"
-ac.visual[idleid] = basedraw
+ac.visual[idleid] = function(c)
+  love.graphics.push()
+  love.graphics.origin()
+  drawcharges(c.charges, c.x, c.y)
+  drawchargeframe(c.x - 20, c.y + 20 + barh, 1)
+  love.graphics.pop()
+end
 
 -- Charging state
 local chargingid = "charging"

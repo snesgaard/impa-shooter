@@ -24,9 +24,12 @@ function getplayer(g)
   return g.actors.impa
 end
 
+local timerfreq = 4
+
 function love.keypressed(key, isrepeat)
   framedata.keyboard[key] = love.timer.getTime()
-  --print(key)
+  if key == "q" then timerfreq = timerfreq + 0.1 end
+  if key == "e" then timerfreq = timerfreq - 0.1 end
 end
 
 function love.load()
@@ -155,8 +158,23 @@ function love.draw()
   )
   love.graphics.setShader(shader)
   shader:send("campos", {x, y})
+  shader:send("scale", s)
   shader:send("fade", 0.1)
   shader:send("time", love.timer.getTime())
+  --shader:send("time", 1)
+  local dx = -1
+  shader:send("direction", {dx, 1})
+  shader:send("spatialfreq", 0.005)
+  local ft = timerfreq
+  shader:send("temporalfreq", ft)
+  shader:send("normalfreq", 0.05)
+  shader:send("spatialvar", 0.005)
+  shader:send("spatialthreshold", 0.80)
+  shader:send("normalthreshold", 0.95)
   love.graphics.origin()
+  love.graphics.rectangle("fill", 0, 0, w, h)
+  shader:send("normalfreq", 0.1)
+  shader:send("fade", 0.075)
+  shader:send("temporalfreq", ft + 1)
   love.graphics.rectangle("fill", 0, 0, w, h)
 end
