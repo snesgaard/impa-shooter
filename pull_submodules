@@ -1,0 +1,4 @@
+#!/bin/bash
+
+#pull all of the submodules
+git submodule foreach git pull
