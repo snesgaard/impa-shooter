@@ -1,5 +1,4 @@
-local root = ... .. "."
-local fun = require (root .. "functional")
+local fun = require ("modules/functional")
 
 fsm = {}
 

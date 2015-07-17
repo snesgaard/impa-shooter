@@ -12,7 +12,7 @@ function actor.new()
   return a
 end
 
-function actor.update(a, framedata)
+function actor.update(a, gframedata)
   fsm.update(a.control, a.context, framedata)
 end
 
@@ -34,6 +34,17 @@ function actor.drawsprite(entity, animation)
     error("Face not defined in entity")
   end
 end
+-- Takes a collection of functions and combines them with all current updates
+-- If they are declared
+function actor.globalupdate(a, ...)
+  local funcs = {...}
+  table.foreach(a.control.vertex, function(k, v)
+    local u = a.control.vertex[k].update
+    if u then
+      a.control.vertex[k].update = functional.invfmap(u, unpack(funcs))
+    end
+  end)
+end
 
 actor.types = {
   enemybody = 0,
@@ -41,6 +52,8 @@ actor.types = {
   neutralbody = 2,
   enemyprojectile = 3,
   allyprojectile = 4,
+  enemymelee = 5,
+  allymelee = 6,
 }
 
 actor.taggedbox = function(box, hail, seek)

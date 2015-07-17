@@ -7,11 +7,27 @@ require ("modules/tilephysics")
 local misc = require ("modules/misc")
 require ("modules/coolision")
 require "box"
+require "mobolee"
+require "impa"
+require "health"
+require ("modules/functional")
+require "combat"
+require "globaldata"
 
 -- Utilities
 function loadanimation(path, ...)
   local im = love.graphics.newImage(path)
   return newAnimation(im, ...)
+end
+function drawbox(x, y, w, h, r, g, b)
+  r = r or 255
+  g = g or 255
+  b = b or 255
+  love.graphics.setColor(r, g, b, 255)
+  love.graphics.rectangle("line", x, y, w, h)
+  love.graphics.setColor(r, g, b, 100)
+  love.graphics.rectangle("fill", x, y, w, h)
+  love.graphics.setColor(255, 255, 255, 255)
 end
 
 function xor(a, b)
@@ -24,13 +40,33 @@ function getplayer(g)
   return g.actors.impa
 end
 
-local timerfreq = 4
-
 function love.keypressed(key, isrepeat)
   framedata.keyboard[key] = love.timer.getTime()
-  if key == "q" then timerfreq = timerfreq + 0.1 end
-  if key == "e" then timerfreq = timerfreq - 0.1 end
+  if key == "escape" then love.event.quit() end
 end
+
+function table.shallowcopy(orig)
+    local orig_type = type(orig)
+    local copy
+    if orig_type == 'table' then
+        copy = {}
+        for orig_key, orig_value in pairs(orig) do
+            copy[orig_key] = orig_value
+        end
+    else -- number, string, boolean, etc
+        copy = orig
+    end
+    return copy
+end
+
+function table.copyto(dst, src)
+  for k, v in ipairs(src) do
+    dst[k] = v
+  end
+end
+
+-- Defines
+local renderhitbox = false
 
 function love.load()
   local filter = "nearest"
@@ -39,25 +75,27 @@ function love.load()
   --Global init
   _global = {}
   _global.actors = {
-    impa = require "impa",
     actioncharges = require "actioncharges",
-    health = require "health",
-    bullet = bullet,
+    impa = newimpa(global, "impa", 100, -100),
+    health = newhealthbar(global, "healthbar", "impa"),--require "health",
+    mobolee = newMobolee(global, "mobo", 200, -100),
   }
-  for i = 1, 4 do
-    table.insert(_global.actors, newBox(150 + i * 50, -100))
-  end
+  _global.data = {}
+
   _global.map = sti.new("res/rainylevel")
   misc.setPosSTIMap(_global.map, 0, 0)
   -- Test for shader
   local shaderstr = love.filesystem.read("res/shaders/rain.glsl")
   shader = love.graphics.newShader(shaderstr)
+
 end
 
 
 function love.update(dt)
-  framedata.dt = dt
+  renderboxes = {}
 
+  framedata.dt = dt
+  framedata.time = love.timer.getTime()
   -- Tilemap collisions
   _global.map:update(dt)
   table.foreach(_global.actors, function(_, a)
@@ -80,11 +118,15 @@ function love.update(dt)
   -- Iterate through all actors, allowing them to submit hitboxes for the update
   -- Hitboxes are divided into seekers and hailers
   table.foreach(_global.actors,
-    function(_, a)
+    function(id, a)
       local makehitbox = a.hitbox[a.control.current] or function() return {} end
-      local submit = makehitbox(a.context)
+      local submit = makehitbox(a.context) or {}
       table.foreach(submit,
         function(_, v)
+          -- First add a global id tag to the hitbox
+          -- This can be used for identifying the box in each iteration
+          v.box.globalid = function() return id end
+          -- Proceed to sort hitboxes by seeker and hailer type
           table.foreach(v.seek,
             function(_, s)
               inserttype(seekers, s, v.box)
@@ -95,6 +137,9 @@ function love.update(dt)
               inserttype(hailers, h, v.box)
             end
           )
+          if renderhitbox then
+            table.insert(renderboxes, v)
+          end
         end
       )
     end
@@ -111,8 +156,8 @@ function love.update(dt)
         function(boxa, collisions)
           table.foreach(collisions,
             function(_, boxb)
-              if boxa.hitcallback then boxa.hitcallback(boxb) end
-              if boxb.hitcallback then boxb.hitcallback(boxa) end
+              if boxa.hitcallback then boxa.hitcallback(boxb, boxa) end
+              if boxb.hitcallback then boxb.hitcallback(boxa, boxb) end
             end
           )
         end
@@ -121,6 +166,7 @@ function love.update(dt)
   )
   table.foreach(_global.actors,
     function(k, a)
+      local f = table.shallowcopy(framedata)
       actor.update(a, framedata)
     end
   )
@@ -132,6 +178,9 @@ function love.update(dt)
   table.foreach(terminate, function(k, v)
     _global.actors[v] = nil
   end)
+  -- HACK
+  --love.event.quit()
+  --print(_global.actors.bullet.context.entity.x)
 end
 
 function love.draw()
@@ -141,7 +190,8 @@ function love.draw()
   love.graphics.setShader()
   local w = love.graphics.getWidth()
   local h = love.graphics.getHeight()
-  local ie = _global.actors.impa.context.entity
+  local ie = {x = 0, y = 0}
+  if _global.actors.impa then ie = _global.actors.impa.context.entity end
   local map = _global.map
   local mapwidth = map.width * map.tilewidth
   local mapheight = map.height * map.tileheight
@@ -156,25 +206,57 @@ function love.draw()
       actor.draw(a)
     end
   )
+  local findtable = function(h, ...)
+    local args = {...}
+    for _, v in pairs(args) do
+      args[v] = true
+    end
+    for k, v in pairs(h) do
+      if args[v] then
+        return true
+      end
+    end
+    return false
+  end
+  table.foreach(renderboxes,
+    function(_, v)
+      local b = v.box
+      if findtable(v.hail, actor.types.allybody, actor.types.enemybody) then
+        drawbox(b.x, b.y, b.w, -b.h)
+      elseif findtable(v.hail, actor.types.allyprojectile, actor.types.enemyprojectile, actor.types.enemymelee) then
+        drawbox(b.x, b.y, b.w, -b.h, 255, 0, 0)
+      elseif findtable(v.seek, actor.types.allybody) then
+        drawbox(b.x, b.y, b.w, -b.h, 0, 0, 255)
+      end
+    end
+  )
+
+  love.graphics.origin()
   love.graphics.setShader(shader)
+  local dir = {1, 1}
+  local l = math.sqrt(dir[1] * dir[1] + dir[2] * dir[2])
+  dir[1] = dir[1] / l
+  dir[2] = dir[2] / l
   shader:send("campos", {x, y})
   shader:send("scale", s)
   shader:send("fade", 0.1)
   shader:send("time", love.timer.getTime())
-  --shader:send("time", 1)
-  local dx = -1
-  shader:send("direction", {dx, 1})
+  shader:send("direction", dir)
   shader:send("spatialfreq", 0.005)
-  local ft = timerfreq
+  local ft = 3
   shader:send("temporalfreq", ft)
   shader:send("normalfreq", 0.05)
   shader:send("spatialvar", 0.005)
-  shader:send("spatialthreshold", 0.80)
+  shader:send("spatialthreshold", 0.75)
   shader:send("normalthreshold", 0.95)
-  love.graphics.origin()
   love.graphics.rectangle("fill", 0, 0, w, h)
   shader:send("normalfreq", 0.1)
   shader:send("fade", 0.075)
-  shader:send("temporalfreq", ft + 1)
+  shader:send("temporalfreq", ft * 1.5)
+  love.graphics.rectangle("fill", 0, 0, w, h)
+
+  shader:send("normalfreq", 0.2)
+  shader:send("fade", 0.05)
+  shader:send("temporalfreq", ft * 2)
   love.graphics.rectangle("fill", 0, 0, w, h)
 end

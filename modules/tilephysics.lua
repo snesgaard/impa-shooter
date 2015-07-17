@@ -289,7 +289,7 @@ function mapAdvanceEntity(map, layer_index, entity, dt)
   end
 
   --if  (cx ~= nil or cy ~= nil) and entity.mapCollisionCallback ~= nil then
-  if  entity.mapCollisionCallback then
+  if entity.mapCollisionCallback then
     entity.mapCollisionCallback(entity, map, collisionMap, cx, cy)
   end
 end

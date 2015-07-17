@@ -133,3 +133,7 @@ coolision.newAxisBox = function(x, y, w, h, callback)
 
   return box
 end
+
+coolision.vflipaxisbox = function(box)
+  box.x = -box.x - box.w
+end

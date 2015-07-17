@@ -18,23 +18,26 @@ function newBullet(x, y, sx, face)
   end
   -- Impact state
   local impactid = "impact"
+  local minorimpactid = "minorimpact"
+  local majorimpactid = "majorimpact"
   fsm.vertex(bullet.control, impactid,
     function(c, f)
-      local a = c.animations[impactid]
+      local a = c.impactanimation
       a:update(f.dt)
       c.entity.vx = 0
     end,
     function(c, f)
-      local a = c.animations[impactid]
+      local a = c.impactanimation or c.animations[impactid]
       a:setMode("once")
       a:reset()
       a:play()
+      c.impactanimation = a
     end
   )
   bullet.visual[impactid] = function(c)
     local e = c.entity
     --love.graphics.polygon("fill", p)
-    local a = actor.drawsprite(e, c.animations[impactid])
+    local a = actor.drawsprite(e, c.impactanimation)
   end
   -- Dead state
   local deadid = "dead"
@@ -43,7 +46,7 @@ function newBullet(x, y, sx, face)
   end)
   fsm.connect(bullet.control, impactid).to(deadid).when(
     function(c, f)
-      local a = c.animations[impactid]
+      local a = c.impactanimation
       if not a.playing then return 1 end
     end
   )
@@ -52,9 +55,11 @@ function newBullet(x, y, sx, face)
   bullet.control.current = liveid
   bullet.context.animations = {
     [liveid] = loadanimation("res/bullet.png", 5, 3, 0.05, 0),
-    [impactid] = loadanimation("res/bulletimpact.png", 15, 9, 0.025, 0)
+    [impactid] = loadanimation("res/bulletimpact.png", 15, 9, 0.05, 0),
+    [minorimpactid] = loadanimation("res/minorbulletimpact.png", 15, 9, 0.05, 0),
+    [majorimpactid] = loadanimation("res/majorbulletimpact.png", 15, 18, 0.05, 0)
   }
-  bullet.context.entity = newEntity(x, y, 2.5 * sx, 1, "false")
+  bullet.context.entity = newEntity(x, y, 2.5, 1, "false")
   bullet.context.entity.face = face
   bullet.context.entity.mapCollisionCallback = function(e, _, _, cx, cy)
     e._do_gravity = (cx or cy)
@@ -64,12 +69,22 @@ function newBullet(x, y, sx, face)
   bullet.context.entity.vx = 250 * sx
   bullet.hitbox[liveid] = function(c)
     local e = c.entity
-    local call = function()
+    local call = function(other, box)
+      local d = 0
+      if other.applydamage then
+        d = other.applydamage(e.x, e.y, 1)
+      end
+      if d and d > 1 then
+        c.impactanimation = c.animations[majorimpactid]
+      elseif d and d > 0 then
+        c.impactanimation = c.animations[minorimpactid]
+      else
+        c.impactanimation = c.animations[impactid]
+      end
       c.spawntime = -100000
     end
     local b = coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, call)
     -- HACK: Should be a bit more controlled
-    b.damage = 1
     local seek = actor.types.enemybody
     local hail = actor.types.allyprojectile
     return {actor.taggedbox(b, hail, seek)}

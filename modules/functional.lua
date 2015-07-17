@@ -1,4 +1,4 @@
-local functional = {}
+functional = {}
 
 
 -- reverse(...) : take some tuple and return a tuple of elements in reverse order
@@ -82,10 +82,11 @@ functional.constant = function(...)
   return f
 end
 
--- Intended to build a chain of operations that can be aborted by returning nil or nothing
--- Not truly monadic as the intended use will involve sideeffects galore
--- Kind of like the maybe monad
-functional.monadicbind = function(...)
+-- This function composes a given number functions in a way similar to normal composition
+-- Each function may fail however, by returning nil, which will cease executation
+-- Of the chain
+-- A function is returned that executes the monadic chain.
+functional.monadcompose = function(...)
   local funcs = {...}
   local f = function(...)
     local farg = {...}
@@ -93,6 +94,7 @@ functional.monadicbind = function(...)
       farg = {partf(unpack(farg))}
       if #farg == 0 then return end
     end
+    return unpack(farg)
   end
   return f
 end
@@ -136,6 +138,26 @@ functional.fmap = function(m, t)
     end
   )
   return o
+end
+
+-- This refers to a function that takes a list of functions that all takes the
+-- same number and types of arguments. It produces a function which then takes
+-- said argument and produces an output list by applying a function in said list
+-- to the input. Hence the name "inverse" fmap
+-- TODO think of a more suitable naming according to functional conventions
+functional.invfmap = function(...)
+  local tabfunc = {...}
+
+  local f = function(...)
+    local args = {...}
+    local fm = function(partf)
+      return partf(unpack(args))
+    end
+    r = functional.fmap(fm, tabfunc)
+    return r
+  end
+
+  return f
 end
 
 return functional
