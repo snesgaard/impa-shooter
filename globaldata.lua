@@ -1,30 +1,49 @@
-global = {}
+gamedata = {}
 
-local function do_entry(key)
-  global[key] = {}
-end
+gamedata = {
+  actor = {}, -- Contains the type of all actors, an actor is garuanted to have an entry here
+  -- Actor specific data
+  health = {},
+  stamina = {},
+  maxhealth = {},
+  maxstamina = {},
+  staminaregen = {},
+  soak = {},
+  reduce = {},
+  -- Control and hitbox related data
+  state = {},
+  control = {}, --finite state machine definitions
+  hitbox = {}, -- Hitbox generators
+  -- Graphical data
+  images = {}, -- Contains all loaded images, indexed by path
+  shaders = {},
+  visual = {}, -- Rendering functions
+  -- System related data and functionality
+  system = {
+    script = {}, -- Global scripts which is tied to the game / level and not a specific actor
+    time = 0, -- Time since game began
+    dt = 0, -- Time passed since last frame
+    pressed = {}, -- Button press time stamps
+    released = {}, -- Button release time stamps
+  },
+  -- Level related data
+  levels = {}, -- Contains level type with id as key
+  tilemaps = {},
+  -- Game related data
+  game = {} -- gameid for state
+}
 
-local seed = 0
-global.genid = function()
+local seed = 1
+gamedata.genid = function()
   local s = seed
   seed = seed + 1
   return s
 end
 
-global.runinit = function(_global, f, ...)
-  local k = _global.genid()
-  f(_global, k, ...)
-  table.insert(_global.actorids, id)
-  return k
+gamedata.init = function(data, f, ...)
+  local id = data.genid()
+  f(data, id, ...)
+  return id
 end
 
-do_entry("health")
-do_entry("maxhealth")
-do_entry("stamina")
-do_entry("maxstamina")
-do_entry("soak")
-do_entry("reduce")
-do_entry("invicibility")
-do_entry("animation")
-do_entry("finitestatemachine")
-do_entry("actors")
+return gamedata
