@@ -1,9 +1,14 @@
 require "globaldata" -- THis will generate the global "data" table
 require ("modules/fsm")
 require "game"
+require "input"
 
 function love.keypressed(key, isrepeat)
   gamedata.system.pressed[key] = gamedata.system.time
+end
+
+function love.keyreleased(key, isrepeat)
+  gamedata.system.released[key] = gamedata.system.time
 end
 
 function love.load()
@@ -23,7 +28,7 @@ function love.update(dt)
   local gstate = gamedata.state[gameid]
   local control = gamedata.control[gameid]
   -- Update game fsm
-  fsm.update(control, gstate, gamedata)
+  gamedata.state[gameid] = fsm.update(control, gstate, gamedata, gameid)
 end
 
 function love.draw()

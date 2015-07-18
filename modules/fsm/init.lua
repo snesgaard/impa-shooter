@@ -6,7 +6,7 @@ function fsm.new()
   return {vertex = {}, edge = {}, _globaledge = nil}
 end
 
-function fsm.update(f, current, context)
+function fsm.update(f, current, ...)
   local cid = current
   -- Search for transitions
   local gethighest = fun.compose(
@@ -27,25 +27,25 @@ function fsm.update(f, current, context)
                           end
                         )
                       )
-  local t = gethighest(fsm.getedge(f, cid, context))
+  local t = gethighest(fsm.getedge(f, cid, ...))
 
   if t then
-    fsm.traverse(f, cid, t.id, context)
+    fsm.traverse(f, cid, t.id, ...)
     cid = t.id
   end
 
   local s = f.vertex[cid]
   if s and s.update then
-    s.update(context, framedata)
+    s.update(...)
   end
   return cid
 end
 
-function fsm.traverse(f, previd, newid, context)
+function fsm.traverse(f, previd, newid, ...)
   bs = f.vertex[previd]
   ss = f.vertex[newid]
-  if bs and bs.stop then bs.stop(context) end
-  if ss and ss.begin then ss.begin(context) end
+  if bs and bs.stop then bs.stop(...) end
+  if ss and ss.begin then ss.begin(...) end
 end
 
 function fsm.vertex(sm, n, u, b, s)
@@ -53,11 +53,11 @@ function fsm.vertex(sm, n, u, b, s)
   sm.vertex[n] = s
 end
 
-function fsm.getedge(f, sid, context)
+function fsm.getedge(f, sid, ...)
   local fge = f._globaledge or function() return {} end
-  local agg = fge(sid, context, {})
-  local e = f.edge[sid] or function(_, agg) return agg end
-  return e(context, agg)
+  local agg = fge(sid, {}, ...)
+  local e = f.edge[sid] or function(agg) return agg end
+  return e(agg, ...)
 end
 
 local function newidpriority(id, p)
@@ -67,12 +67,12 @@ end
 local function when(sm, aid, bid, condition)
   --sm.vertex[aid] = A
   --sm.vertex[bid] = B
-  local ef = sm.edge[aid] or function(_, agg) return agg end
-  local c = function(context, agg)
-    local con = condition(context) or -1
+  local ef = sm.edge[aid] or function(agg) return agg end
+  local c = function(agg, ...)
+    local con = condition(...) or -1
     local pri = newidpriority(bid, con)
     table.insert(agg, pri)
-    return ef(context, agg)
+    return ef(agg, ...)
   end
 
   sm.edge[aid] = c
@@ -103,14 +103,14 @@ function fsm.connectall(sm, A)
     local blist = {A, ...}
     local w = function(condition)
       local gf = sm._globaledge or function(_, _, agg) return agg end
-      local ngf = function(sid, context, agg)
+      local ngf = function(sid, agg, ...)
         local isblack = false
         table.foreach(blist, function(_, v) isblack = isblack or (v == sid ) end)
         if not isblack then
-          local con = condition(context) or -1
+          local con = condition(...) or -1
           table.insert(agg, newidpriority(A, con))
         end
-        return gf(sid, context, agg)
+        return gf(sid, agg, ...)
       end
       sm._globaledge = ngf
     end

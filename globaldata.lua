@@ -1,5 +1,3 @@
-gamedata = {}
-
 gamedata = {
   actor = {}, -- Contains the type of all actors, an actor is garuanted to have an entry here
   -- Actor specific data
@@ -30,7 +28,9 @@ gamedata = {
   levels = {}, -- Contains level type with id as key
   tilemaps = {},
   -- Game related data
-  game = {} -- gameid for state
+  game = {}, -- gameid for state
+  -- Input related data
+  latch = {},
 }
 
 local seed = 1
