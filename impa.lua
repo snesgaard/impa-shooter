@@ -1,496 +1,330 @@
-require "actor"
-require "entity"
+require "math"
+local addtrail = require "evadetrail"
+require "gunexhaust"
 require "bullet"
 
-local keybuffer = {
-  [" "] = 0.15
-}
+loaders = loaders or {}
+actor = actor or {}
 
-local latchtable = {
-
-}
-
-local function pressed(f, k)
-  local t = f.keyboard[k] or -1e300
-  local l = latchtable[k] or -1e300
-  local buffer = keybuffer[k] or 0.1
-  return (t > l) and (f.time - t < buffer)
+-- Utilities
+local loadimage = function(gamedata, path)
+  gamedata.visual.images[path] = love.graphics.newImage(path)
 end
-
-local function latch(k)
-  latchtable[k] = love.timer.getTime()
-end
-
--- Utility
-local function turnface(c, f)
-  local r = love.keyboard.isDown("right")
-  local l = love.keyboard.isDown("left")
-  if r and not l then return "right" end
-  if l and not r then return "left" end
-  return c.entity.face
+local onground = function(gamedata, id, buffer)
+  local g = gamedata.ground[id]
+  local t = gamedata.system.time
+  return g and t - g < buffer
 end
 
 -- Defines
-local groundbuffer = 0.10
-local hurtduration = 0.30
-local evadesampleperiod = 0.025
-local evadeduration = 0.2
-local movespeed = 75
-local evadespeed = 150
-local stateid = {
-  idle = "idle",
-  walk = "walk",
-  fire = "fire",
-  arialfire = "arialfire",
-  jump = "jump",
-  ascend = "ascend",
-  descend = "descend",
-  evade = "evade",
-  hurt = "hurt",
+local w = 4
+local h = 12
+local exhaustcoords = {x = 18, y = 1}
+
+local groundbuffer = 0.1
+local walkspeed = 75
+local jumpspeed = 200
+local evadeduration = 0.1
+local evadedistance = 30
+local evadespeed = evadedistance / evadeduration
+local evadesampling = 0.025
+local fireframetime = 0.05
+local fireframes = 4
+
+-- Controls
+local jumpkey = " "
+local firekey = "a"
+local evadekey = "lshift"
+
+local imagepath = {
+  idle = "res/idle.png",
+  walk = "res/walk.png",
+  ascend = "res/ascend.png",
+  descend = "res/descend.png",
+  fire = "res/fire.png",
+  arialfire = "res/arialfire.png",
+  evade = "res/evade.png",
 }
-local maxhealth = 4
 
-function newimpa(globaldata, id, x, y)
-  --Impa
-  impa = actor.new()
-
-  --Idle state
-  fsm.vertex(impa.control, stateid.idle,
-    function(context, framedata)
-      local a = context.animations[stateid.idle]
-      a:update(framedata.dt)
-    end,
-    function(c)
-      c.entity.vx = 0
-    end
-  )
-  impa.visual[stateid.idle] = function(context)
-    local a = context.animations[stateid.idle]
-    actor.drawsprite(context.entity, a)
-    --drawcentered(context, a)
-    --a:draw(context.entity.x, context.entity.y, 0, 1, -1)
+loaders.impa = function(gamedata)
+  for _, impath in pairs(imagepath) do
+    loadimage(gamedata, impath)
   end
-  --Walk state
-  fsm.vertex(impa.control, stateid.walk,
-    function(c, f)
-      local a = c.animations[stateid.walk]
-      a:update(f.dt)
+end
 
-      local r = love.keyboard.isDown("right")
-      if r then
-        c.entity.vx = movespeed
-        c.entity.face = "right"
-      else
-        c.entity.vx = -movespeed
-        c.entity.face = "left"
-      end
-     end,
-    function(c)
-      local a = c.animations[stateid.walk]
-      a:reset()
+local draw_coroutines_creator = {}
+draw_coroutines_creator.normal = function(animations)
+  local normal = {}
+  normal.ground = function(gamedata, id)
+    local anime
+    local entity = gamedata.entity[id]
+    local face = gamedata.face[id]
+    if math.abs(entity.vx) > 0 then
+      anime = animations.walk
+    else
+      anime = animations.idle
     end
-  )
-  impa.visual[stateid.walk] = function(c)
-    local a = c.animations[stateid.walk]
-    local w = a:getWidth()
-    local h = a:getHeight()
-    actor.drawsprite(c.entity, a)
-    --drawcentered(c, a)
-    --a:draw(c.entity.x - w / 2, - c.entity.y - h / 2)
+    anime:update(gamedata.system.dt)
+    misc.draw_sprite_entity(anime, entity, face)
+    coroutine.yield()
+    return normal.ground(gamedata, id)
   end
-  --Fire state
-  fsm.vertex(impa.control, stateid.fire,
-    function(c, f)
-      local a = c.animations[stateid.fire]
-      a:update(f.dt)
-      if a:getCurrentFrame() > 1 and c._do_fire then
-        c._do_fire = false
-        local e = c.entity
-        if e.face == "right" then
-          table.insert(_global.actors, newBullet(e.x + 15, e.y + 1, 1, "right"))
-          table.insert(_global.actors, newGunExhaust(e.x + 15, e.y + 1, "right"))
-        elseif e.face == "left" then
-          table.insert(_global.actors, newBullet(e.x - 15, e.y + 1, -1, "left"))
-          table.insert(_global.actors, newGunExhaust(e.x - 15, e.y + 1, "left"))
-        else
-          error("Face not defined")
-        end
-      elseif a:getCurrentFrame() <= 1 then
-        c.entity.face = turnface(c, f)
-      end
-    end,
-    function(c, f)
-      local a = c.animations[stateid.fire]
-      c._do_fire = true
-      a:setMode("once")
-      a:reset()
-      a:play()
-      c.entity.vx = 0
-      c.entity.face = turnface(c, f)
+  normal.arial = function(gamedata, id)
+    while gamedata.entity[id].vy > 0 do
+      animations.ascend:update(gamedata.system.dt)
+      misc.draw_sprite_entity(animations.ascend, gamedata.entity[id], gamedata.face[id])
+      coroutine.yield()
     end
-  )
-  impa.visual[stateid.fire] = function(c)
-    local a = c.animations[stateid.fire]
-    actor.drawsprite(c.entity, a)
+    -- Possible transition animation goes here
+    while gamedata.entity[id].vy <= 0 do
+      animations.descend:update(gamedata.system.dt)
+      misc.draw_sprite_entity(animations.descend, gamedata.entity[id], gamedata.face[id])
+      coroutine.yield()
+    end
+    return normal.arial(gamedata, id)
   end
-
-  -- Arial fire state
-  fsm.vertex(impa.control, stateid.arialfire,
-    function(c, f)
-      local a = c.animations[stateid.arialfire]
-      a:update(f.dt)
-      if a:getCurrentFrame() > 1 and c._do_fire then
-        c._do_fire = false
-        local e = c.entity
-        if e.face == "right" then
-          table.insert(_global.actors, newBullet(e.x + 15, e.y + 1, 1, "right"))
-          table.insert(_global.actors, newGunExhaust(e.x + 15, e.y + 1, "right"))
-        elseif e.face == "left" then
-          table.insert(_global.actors, newBullet(e.x - 15, e.y + 1, -1, "left"))
-          table.insert(_global.actors, newGunExhaust(e.x - 15, e.y + 1, "left"))
-        else
-          error("Face not defined")
-        end
-      elseif a:getCurrentFrame() <= 1 then
-        c.entity.face = turnface(c, f)
-      end
-
-      local r = love.keyboard.isDown("right")
-      local l = love.keyboard.isDown("left")
-      if r and not l then
-        c.entity.vx = movespeed
-      elseif l and not r then
-        c.entity.vx = -movespeed
-      else
-        c.entity.vx = 0
-      end
-    end,
-    function(c, f)
-      local a = c.animations[stateid.arialfire]
-      c._do_fire = true
-      a:setMode("once")
-      a:reset()
-      a:play()
-      c.entity.face = turnface(c, f)
+  local co_ground = coroutine.create(normal.ground)
+  local co_arial = coroutine.create(normal.arial)
+  normal.runner = function(gamedata, id)
+    local g = onground(gamedata, id, groundbuffer)
+    if g then
+      coroutine.resume(co_ground, gamedata, id)
+    else
+      coroutine.resume(co_arial, gamedata, id)
     end
-  )
-  impa.visual[stateid.arialfire] = function(c)
-    local a = c.animations[stateid.arialfire]
-    actor.drawsprite(c.entity, a)
+    coroutine.yield()
+    return normal.runner(gamedata, id)
   end
-
-  -- Jump state
-  fsm.vertex(impa.control, stateid.jump,
-    function(c, f)
-      local a = c.animations[stateid.jump]
-      a:update(f.dt)
-    end,
-    function(c)
-      c.entity.vy = 200
+  return coroutine.create(normal.runner)
+end
+draw_coroutines_creator.fire = function(animations)
+  return coroutine.create(function(gamedata, id)
+    local g = onground(gamedata, id, groundbuffer)
+    local anime
+    if g then
+      anime = animations.fire
+    else
+      anime = animations.arialfire
     end
-  )
-  impa.visual[stateid.jump] = function(c)
-    local a = c.animations[stateid.jump]
-    actor.drawsprite(c.entity, a)
-  end
-  -- Ascend state
-  fsm.vertex(impa.control, stateid.ascend,
-    function(c, f)
-      local a = c.animations[stateid.ascend]
-      a:update(f.dt)
-
-      local r = love.keyboard.isDown("right")
-      local l = love.keyboard.isDown("left")
-      if r and not l then
-        c.entity.vx = movespeed
-        c.entity.face = "right"
-      elseif l and not r then
-        c.entity.vx = -movespeed
-        c.entity.face = "left"
-      else
-        c.entity.vx = 0
+    anime:setMode("once")
+    anime:reset()
+    anime:play()
+    local swapanimation = function(olda, newa)
+      newa:setMode("once")
+      newa:play()
+      newa:seek(olda:getCurrentFrame())
+      newa.timer = olda.timer
+      return newa
+    end
+    while true do
+      g = onground(gamedata, id, groundbuffer)
+      -- Transition to normal ground fire animation
+      if g and anime == animations.arialfire then
+        anime = swapanimation(animations.arialfire, animations.fire)
+      elseif not g and anime == animations.fire then
+        anime = swapanimation(animations.fire, animations.arialfire)
       end
+      anime:update(gamedata.system.dt)
+      misc.draw_sprite_entity(anime, gamedata.entity[id], gamedata.face[id])
+      coroutine.yield()
     end
-  )
-
-  impa.visual[stateid.ascend] = function(c)
-    local a = c.animations[stateid.ascend]
-    actor.drawsprite(c.entity, a)
+  end)
+end
+draw_coroutines_creator.evade = function(animations)
+  local trail = {}
+  local draw
+  draw = function(gamedata, id, trail)
+    local anime = animations.evade
+    local timer = misc.createtimer(gamedata.system.time, evadesampling)
+    table.insert(trail, addtrail(gamedata.entity[id], gamedata.face[id], gamedata.system.time, anime))
+    while timer(gamedata.system.time) do
+      anime:update(gamedata.system.dt)
+      love.graphics.setColor(100, 50, 255)
+      misc.draw_sprite_entity(anime, gamedata.entity[id], gamedata.face[id])
+      love.graphics.setColor(255, 255, 255)
+      coroutine.yield()
+    end
+    return draw(gamedata, id, trail)
   end
-
-  -- Descend state
-  fsm.vertex(impa.control, stateid.descend,
-    function(c, f)
-      local a = c.animations[stateid.descend]
-      a:update(f.dt)
-
-      local r = love.keyboard.isDown("right")
-      local l = love.keyboard.isDown("left")
-      if r and not l then
-        c.entity.vx = movespeed
-        c.entity.face = "right"
-      elseif l and not r then
-        c.entity.vx = -movespeed
-        c.entity.face = "left"
-      else
-        c.entity.vx = 0
-      end
-    end
-  )
-
-  impa.visual[stateid.descend] = function(c)
-    local a = c.animations[stateid.descend]
-    actor.drawsprite(c.entity, a)
+  local init = function(gamedata, id)
+    gamedata.init(gamedata, actor.evadetrail, trail)
+    return draw(gamedata, id, trail)
   end
+  return coroutine.create(init)
+end
 
-  -- Evade state
-  fsm.vertex(impa.control, stateid.evade,
-    function(c, f)
-      local a = c.animations[stateid.evade]
-      a:update(f.dt)
-
-      local e = c.entity
-      if e.face == "right" then
-        e.vx = evadespeed
-      elseif e.face == "left" then
-        e.vx = -evadespeed
-      else
-        error("Face should be left or right")
-      end
-      e.vy = 0
-
-      if c.sample() then
-        local t = love.timer.getTime()
-        c.sample = function() return love.timer.getTime() - t > evadesampleperiod end
-        table.insert(c.trail, {face = e.face, x = e.x, y = e.y})
-      end
-    end,
-    function(c, f)
-      local t = love.timer.getTime()
-      c.evade_done = function() return love.timer.getTime() - t > evadeduration end
-
-      c.trail = {}
-      c.sample = function() return love.timer.getTime() - t > evadesampleperiod end
-
-      c.entity.face = turnface(c, f)
-
-      -- Active invunlerability by
-      globaldata.invicibility[id] = globaldata.invicibility[id] + 1
-    end,
-    function(c, f)
-      globaldata.invicibility[id] = globaldata.invicibility[id] - 1
-    end
-  )
-
-  impa.visual[stateid.evade] = function(c)
-    local a = c.animations[stateid.evade]
-    love.graphics.setColor(120, 0, 120, 200)
-    table.foreach(c.trail, function(_, e) actor.drawsprite(e, a) end)
-    love.graphics.setColor(255, 255, 255, 255)
-    actor.drawsprite(c.entity, a)
+-- States
+local normal = {}
+local fire = {}
+local evade = {}
+-- State definitions
+normal.begin = function(gamedata, id, cache)
+  gamedata.visual.drawers[id] = cache.draw_coroutines.normal
+  return normal.run(gamedata, id, cache)
+end
+normal.run = function(gamedata, id, cache)
+  local r = input.isdown(gamedata, "right")
+  local l = input.isdown(gamedata, "left")
+  local e = gamedata.entity[id]
+  local s = input.ispressed(gamedata, jumpkey)
+  local g = onground(gamedata, id, groundbuffer)
+  local a = input.ispressed(gamedata, firekey)
+  local ev = input.ispressed(gamedata, evadekey)
+  -- Jumping controls
+  if s and g then
+    input.latch(gamedata, jumpkey)
+    gamedata.ground[id] = nil
+    e.vy = jumpspeed
   end
+  -- Control movement and direction
+  if r then
+    gamedata.face[id] = "right"
+    e.vx = walkspeed
+  elseif l then
+    gamedata.face[id] = "left"
+    e.vx = -walkspeed
+  else
+    e.vx = 0
+  end
+  coroutine.yield()
+  if ev then
+    input.latch(gamedata, evadekey)
+    return evade.begin(gamedata, id, cache)
+  elseif a then
+    input.latch(gamedata, firekey)
+    return fire.begin(gamedata, id, cache)
+  end
+  return normal.run(gamedata, id, cache)
+end
 
-  -- Hurt state
-  fsm.vertex(impa.control, stateid.hurt,
-    function(c, f)
-      local a = c.animations[stateid.hurt]
-      a:update(f.dt)
-    end,
-    function(c, f)
-      c.hurtstart = love.timer.getTime()
-      c.entity.vx = 0
-      --c.entity.vy = 0
-      c.hit = false
-    end
-  )
-  local hurtblinkfrequency = 10.0 * math.pi * 2
-  impa.visual[stateid.hurt] = function(c)
-    local dt = love.timer.getTime() - c.hurtstart
-    if math.sin(hurtblinkfrequency * dt) > 0 then
-      local a = c.animations[stateid.hurt]
-      actor.drawsprite(c.entity, a)
+fire.begin = function(gamedata, id, cache)
+  gamedata.visual.drawers[id] = draw_coroutines_creator.fire(cache.animations)
+  -- Set face
+  local r = input.isdown(gamedata, "right")
+  local l = input.isdown(gamedata, "left")
+  if r then
+    gamedata.face[id] = "right"
+  elseif l then
+    gamedata.face[id] = "left"
+  end
+  local movecontrol = function(gamedata, id)
+    local e = gamedata.entity[id]
+    local r = input.isdown(gamedata, "right")
+    local l = input.isdown(gamedata, "left")
+    local g = onground(gamedata, id, groundbuffer)
+    if not g and r then
+      e.vx = walkspeed
+    elseif not g and l then
+      e.vx = -walkspeed
+    else
+      e.vx = 0
     end
   end
-
-  -- Hitbox
-  local basehitbox = function(c)
-    local e = c.entity
-    local applydamage = function(x, y, dmg)
-      local soak = globaldata.soak[id]
-      local reduce = globaldata.reduce[id]
-      local inv = globaldata.invicibility[id]
-      local fd = combat.calculatedamage(dmg, soak, reduce, inv)
-      if fd > 0 then
-        health.reduce(fd)
-        c.hit = true
-      end
-      return fd
+  local co = coroutine.create(function(gamedata, id)
+    local pretimer = misc.createtimer(gamedata.system.time, fireframetime)
+    while pretimer(gamedata.system.time) do
+      movecontrol(gamedata, id)
+      coroutine.yield()
     end
-    local b = coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, call)
-    b.applydamage = applydamage
-    local hail = actor.types.allybody
-
-    return {actor.taggedbox(b, hail)}
+    -- Spawn bullet here
+    local entity = gamedata.entity[id]
+    local face = gamedata.face[id]
+    local sx = 1
+    if face == "left" then sx = -1 end
+    gamedata.init(
+      gamedata, actor.gunexhaust, entity.x + exhaustcoords.x * sx,
+      entity.y + exhaustcoords.y, face
+    )
+    gamedata.init(
+      gamedata, actor.bullet, entity.x + exhaustcoords.x * sx,
+      entity.y + exhaustcoords.y, 250 * sx
+    )
+    local posttimer = misc.createtimer(gamedata.system.time, fireframetime * 3)
+    while posttimer(gamedata.system.time) do
+      movecontrol(gamedata, id)
+      coroutine.yield()
+    end
+  end)
+  return fire.run(gamedata, id, cache, co)
+end
+fire.run = function(gamedata, id, cache, co)
+  coroutine.resume(co, gamedata, id)
+  coroutine.yield()
+  local ev = input.ispressed(gamedata, evadekey)
+  if ev then
+    input.latch(gamedata, evadekey)
+    return evade.begin(gamedata, id, cache)
+  elseif coroutine.status(co) == "dead" then
+    local a = input.ispressed(gamedata, firekey)
+    if a then
+      input.latch(gamedata, firekey)
+      return fire.begin(gamedata, id, cache)
+    end
+    return normal.begin(gamedata, id, cache)
   end
-  table.foreach(stateid,
-  function(_, id)
-    impa.hitbox[id] = basehitbox
+  return fire.run(gamedata, id, cache, co)
+end
+
+evade.begin = function(gamedata, id, cache)
+  gamedata.visual.drawers[id] = draw_coroutines_creator.evade(cache.animations)
+  local r = input.isdown(gamedata, "right")
+  local l = input.isdown(gamedata, "left")
+  if r then
+    gamedata.face[id] = "right"
+  elseif l then
+    gamedata.face[id] = "left"
   end
-  )
+  local e = gamedata.entity[id]
+  if gamedata.face[id] == "right" then
+    e.vx = evadespeed
+  else
+    e.vx = -evadespeed
+  end
+  return evade.run(gamedata, id, cache)
+end
+evade.run = function(gamedata, id, cache)
+  local timer = misc.createtimer(gamedata.system.time, evadeduration)
+  local e = gamedata.entity[id]
+  while timer(gamedata.system.time) do
+    e.vy = 0
+    coroutine.yield()
+  end
+  return normal.begin(gamedata, id, cache)
+end
 
-  --Edges
-  fsm.connect(impa.control, stateid.idle).to(stateid.walk).when(
-    function(c, f)
-      local l = love.keyboard.isDown("left")
-      local r = love.keyboard.isDown("right")
-      if xor(l, r) then return 1 end
-    end
-  )
-  fsm.connect(impa.control, stateid.walk).to(stateid.idle).when(
-    function(c, f)
-      local l = love.keyboard.isDown("left")
-      local r = love.keyboard.isDown("right")
-      if not xor(l, r) then return 1 end
-    end
-  )
-  fsm.connect(impa.control, stateid.walk, stateid.idle).to(stateid.fire).when(
-    function(c, f)
-      if pressed(f, "a") then
-        latch("a")
-        return 2
-      end
-    end
-  )
-
-  fsm.connect(impa.control, stateid.fire).to(stateid.idle).when(
-    function(c, f)
-      local a = c.animations[stateid.fire]
-      if not a.playing then return 4 end
-    end
-  )
-
-  fsm.connect(impa.control, stateid.idle, stateid.walk).to(stateid.jump).when(
-    function(c, f)
-      if pressed(f, ' ') then
-        latch(' ')
-        c.entity.onground = function() return false end
-        return 3
-      end
-    end
-  )
-
-  fsm.connectall(impa.control, stateid.ascend).except(stateid.descend, stateid.evade, stateid.arialfire, stateid.hurt).when(
-    function(c, f)
-      if not c.entity.onground() and c.entity.vy > 0 then
-        return 10
-      end
-    end
-  )
-
-  fsm.connectall(impa.control, stateid.descend).except(stateid.ascend, stateid.evade, stateid.arialfire, stateid.hurt).when(
-    function(c, f)
-      if not c.entity.onground() and c.entity.vy <= 0 then
-        return 10
-      end
-    end
-  )
-
-  fsm.connect(impa.control, stateid.ascend, stateid.descend).to(stateid.idle).when(
-    function(c, f)
-      if c.entity.onground() then
-        return 2
-      end
-    end
-  )
-
-  fsm.connect(impa.control, stateid.ascend).to(stateid.descend).when(
-    function(c, f)
-      if c.entity.vy < 0 then return 1 end
-    end
-  )
-
-  fsm.connectall(impa.control, stateid.evade).except(stateid.hurt).when(
-    function(c, f)
-      if pressed(f, 'lshift') and (not actioncharges or actioncharges.usecharge(1)) then
-        latch('lshift')
-        return 20
-      end
-    end
-  )
-
-  fsm.connect(impa.control, stateid.evade).to(stateid.idle).when(
-    function(c, f)
-      if not c.evade_done or c.evade_done() then return 1 end
-    end
-  )
-
-  fsm.connect(impa.control, stateid.ascend, stateid.descend).to(stateid.arialfire).when(
-    function(c, f)
-      if pressed(f, "a") then
-        latch("a")
-        return 2
-      end
-    end
-  )
-
-  fsm.connect(impa.control, stateid.arialfire).to(stateid.ascend).when(
-    function(c, f)
-      local a = c.animations[stateid.arialfire]
-      local e = c.entity
-      if not a.playing and not e.onground() then return 1 end
-    end
-  )
-
-  fsm.connect(impa.control, stateid.arialfire).to(stateid.idle).when(
-    function(c, f)
-      local a = c.animations[stateid.arialfire]
-      local e = c.entity
-      if not a.playing and e.onground() then return 1 end
-    end
-  )
-
-  fsm.connectall(impa.control, stateid.hurt).when(
-    function(c, f)
-      if c.hit then return 5 end
-    end
-  )
-  fsm.connect(impa.control, stateid.hurt).to(stateid.idle).when(
-    function(c, f)
-      if love.timer.getTime() - c.hurtstart > hurtduration then return 1 end
-    end
-  )
-
-  --Init
-  impa.context.animations = {
-    [stateid.idle] = loadanimation("res/idle.png", 48, 48, 0.2, 0),
-    [stateid.walk] = loadanimation("res/walk.png", 48, 48, 0.15, 0),
-    [stateid.fire] = loadanimation("res/fire.png", 48, 48, 0.05, 0),
-    [stateid.jump] = loadanimation("res/idle.png", 48, 48, 0.2, 0),
-    [stateid.ascend] = loadanimation("res/ascend.png", 48, 48, 0.15, 2),
-    [stateid.descend] = loadanimation("res/descend.png", 48, 48, 0.15, 2),
-    [stateid.evade] = loadanimation("res/evade.png", 48, 48, 0.15, 2),
-    [stateid.arialfire] = loadanimation("res/arialfire.png", 48, 48, 0.05, 0),
-    [stateid.hurt] = loadanimation("res/hurt.png", 48, 48, 0.05, 0),
+local _recursive_control = function(gamedata, id)
+  local ims = gamedata.visual.images
+  local cache = {}
+  cache.animations = {
+    idle = newAnimation(ims[imagepath.idle], 48, 48, 0.2, 4),
+    walk = newAnimation(ims[imagepath.walk], 48, 48, 0.15, 4),
+    descend = newAnimation(ims[imagepath.descend], 48, 48, 0.15, 2),
+    ascend = newAnimation(ims[imagepath.ascend], 48, 48, 0.15, 2),
+    fire = newAnimation(ims[imagepath.fire], 48, 48, fireframetime, fireframes),
+    arialfire = newAnimation(ims[imagepath.arialfire], 48, 48, fireframetime, fireframes),
+    evade = newAnimation(ims[imagepath.evade], 48, 48, 0.15, 2)
   }
-  impa.context.entity = newEntity(x, y, 4, 12)
+  cache.draw_coroutines = {
+    normal = draw_coroutines_creator.normal(cache.animations),
+    fire = draw_coroutines_creator.fire(cache.animations),
+  }
+  return normal.begin(gamedata, id, cache)
+end
 
-  impa.control.current = stateid.idle
-
-  impa.context.entity.ground = false
-  impa.context.entity.onground = function() return false end
-  impa.context.entity.mapCollisionCallback = function(e, _, _, cx, cy)
-    e.ground = (cy and cy < e.y)
+local control = _recursive_control
+local type = "player"
+actor.impa = function(gamedata, id, x, y)
+  gamedata.actor[id] = "player"
+  gamedata.entity[id] = newEntity(x, y, w, h)
+  gamedata.entity[id].mapCollisionCallback = function(e, _, _, cx, cy)
     if cy and cy < e.y then
-      local t = love.timer.getTime()
-      e.onground = function() return love.timer.getTime() - t < groundbuffer end
+      gamedata.ground[id] = gamedata.system.time
     end
   end
-
-  globaldata.health[id] = maxhealth
-  globaldata.maxhealth[id] = maxhealth
-  globaldata.soak[id] = 0
-  globaldata.reduce[id] = 1
-  globaldata.invicibility[id] = 0
-
-  return impa
+  gamedata.control[id] = coroutine.create(control)
+  gamedata.face[id] = "left"
+  gamedata.visual.layer[id] = layer
+  -- Init game related stats
+  gamedata.maxhealth[id] = 4
+  gamedata.maxstamina[id] = 2
 end

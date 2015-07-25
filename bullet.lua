@@ -1,141 +1,106 @@
-require "actor"
+actor = actor or {}
+loaders = loaders or {}
 
-function newBullet(x, y, sx, face)
-  sx = sx or 1
-  -- Bullet
-  local bullet = actor.new()
-  -- Live state
-  local liveid = "live"
-  fsm.vertex(bullet.control, liveid,
-  function(c, f)
-    local a = c.animations[liveid]
-    a:update(f.dt)
-  end)
-  bullet.visual[liveid] = function(c)
-    local e = c.entity
-    --love.graphics.polygon("fill", p)
-    local a = actor.drawsprite(e, c.animations[liveid])
-  end
-  -- Impact state
-  local impactid = "impact"
-  local minorimpactid = "minorimpact"
-  local majorimpactid = "majorimpact"
-  fsm.vertex(bullet.control, impactid,
-    function(c, f)
-      local a = c.impactanimation
-      a:update(f.dt)
-      c.entity.vx = 0
-    end,
-    function(c, f)
-      local a = c.impactanimation or c.animations[impactid]
-      a:setMode("once")
-      a:reset()
-      a:play()
-      c.impactanimation = a
-    end
-  )
-  bullet.visual[impactid] = function(c)
-    local e = c.entity
-    --love.graphics.polygon("fill", p)
-    local a = actor.drawsprite(e, c.impactanimation)
-  end
-  -- Dead state
-  local deadid = "dead"
-  fsm.connect(bullet.control, liveid).to(impactid).when(function(c, f)
-    if love.timer.getTime() - c.spawntime > 1.0 then return 1 end
-  end)
-  fsm.connect(bullet.control, impactid).to(deadid).when(
-    function(c, f)
-      local a = c.impactanimation
-      if not a.playing then return 1 end
-    end
-  )
+-- defines
+local w = 2.5
+local h = 1
+local lifetime = 4
+local impacttime = 0.1
+local impactframes = 3
+local impactframetime = impacttime / impactframes
 
-  --Init
-  bullet.control.current = liveid
-  bullet.context.animations = {
-    [liveid] = loadanimation("res/bullet.png", 5, 3, 0.05, 0),
-    [impactid] = loadanimation("res/bulletimpact.png", 15, 9, 0.05, 0),
-    [minorimpactid] = loadanimation("res/minorbulletimpact.png", 15, 9, 0.05, 0),
-    [majorimpactid] = loadanimation("res/majorbulletimpact.png", 15, 18, 0.05, 0)
-  }
-  bullet.context.entity = newEntity(x, y, 2.5, 1, "false")
-  bullet.context.entity.face = face
-  bullet.context.entity.mapCollisionCallback = function(e, _, _, cx, cy)
-    e._do_gravity = (cx or cy)
-    if (cx or cy) then bullet.context.spawntime = -100000 end
+
+local imagepaths = {
+  body = "res/bullet.png",
+  dudimpact = "res/bulletimpact.png",
+  minorimpact = "res/minorbulletimpact.png",
+  majorimpact = "res/majorbulletimpact.png",
+}
+
+loaders.bullet = function(gamedata)
+  for _, path in pairs(imagepaths) do
+    gamedata.visual.images[path] = love.graphics.newImage(path)
   end
-  bullet.context.spawntime = love.timer.getTime()
-  bullet.context.entity.vx = 250 * sx
-  bullet.hitbox[liveid] = function(c)
-    local e = c.entity
-    local call = function(other, box)
-      local d = 0
-      if other.applydamage then
-        d = other.applydamage(e.x, e.y, 1)
-      end
-      if d and d > 1 then
-        c.impactanimation = c.animations[majorimpactid]
-      elseif d and d > 0 then
-        c.impactanimation = c.animations[minorimpactid]
-      else
-        c.impactanimation = c.animations[impactid]
-      end
-      c.spawntime = -100000
-    end
-    local b = coolision.newAxisBox(e.x - e.wx, e.y + e.wy, e.wx * 2, e.wy * 2, call)
-    -- HACK: Should be a bit more controlled
-    local seek = actor.types.enemybody
-    local hail = actor.types.allyprojectile
-    return {actor.taggedbox(b, hail, seek)}
-  end
-  return bullet
 end
 
+local cleanup = function(gamedata, id)
+  gamedata.visual.drawers[id] = nil
+  gamedata.control[id] = nil
+  gamedata.ground[id] = nil
+  gamedata.entity[id] = nil
+end
 
-function newGunExhaust(x, y, face)
-  local ge = actor.new()
+local visual = {}
 
-  local dx = 5
-  if face == "left" then
-    dx = -dx
+visual.alive = function(animations)
+  local co
+  co = function(gamedata, id)
+    local anime = animations.body
+    local entity = gamedata.entity[id]
+    local face = gamedata.face[id]
+    misc.draw_sprite_entity(anime, entity, face)
+    coroutine.yield()
+    anime:update(gamedata.system.dt)
+    return co(gamedata, id)
   end
+  return co
+end
 
-  -- Live state
-  local liveid = "live"
-  fsm.vertex(ge.control, liveid,
-    function(c, f)
-      local a = c.animations[liveid]
-      a:update(f.dt)
-    end,
-    function(c, f)
-      local a = c.animations[liveid]
-      a:setMode("once")
-      a:reset()
-      a:play()
-    end
-  )
-  ge.visual[liveid] = function(c)
-    local a = c.animations[liveid]
-    actor.drawsprite({x = x + dx, y = y, face = face}, a)
+visual.dudimpact = function(animations)
+  local co
+  co = function(gamedata, id)
+    local anime = animations.dudimpact
+    local entity = gamedata.entity[id]
+    local face = gamedata.face[id]
+    misc.draw_sprite_entity(anime, entity, face)
+    coroutine.yield()
+    anime:update(gamedata.system.dt)
+    return co(gamedata, id)
   end
+  return co
+end
 
-  -- Dead state
-  local deadid = "dead"
+local alive = function(gamedata, id, cache)
+  local e = gamedata.entity[id]
+  local timer = misc.createtimer(gamedata.system.time, lifetime)
+  while timer(gamedata.system.time) and not gamedata.ground[id] do
+    e.vy = 0
+    coroutine.yield()
+  end
+  gamedata.visual.drawers[id] = coroutine.create(visual.dudimpact(cache.animations))
+  local deadtimer = misc.createtimer(gamedata.system.time, impacttime)
+  while deadtimer(gamedata.system.time) do
+    e.vy = 0
+    coroutine.yield()
+  end
+  gamedata.cleanup[id] = cleanup
+  coroutine.yield()
+end
 
-  --Edges
-  fsm.connect(ge.control, liveid).to(deadid).when(
-    function(c, f)
-      local a = c.animations[liveid]
-      if not a.playing then return 4 end
-    end
-  )
-
-  --Init
-  ge.context.animations = {
-    [liveid] = loadanimation("res/gunexhaust.png", 10, 9, 0.05, 0)
+local control = function(gamedata, id)
+  local ims = gamedata.visual.images
+  local cache = {}
+  cache.animations = {
+    body = newAnimation(ims[imagepaths.body], 5, 3, 0.05, 0),
+    dudimpact = newAnimation(ims[imagepaths.dudimpact], 15, 9, impactframetime, impactframes),
+    minorimpact = newAnimation(ims[imagepaths.minorimpact], 15, 9, impactframetime, impactframes),
+    majorimpact = newAnimation(ims[imagepaths.majorimpact], 15, 18, impactframetime, impactframes),
   }
+  gamedata.visual.drawers[id] = coroutine.create(visual.alive(cache.animations))
+  return alive(gamedata, id, cache)
+end
 
-  fsm.traverse(ge.control, liveid, ge.context, {})
-  return ge
+local type = "bullet"
+actor.bullet = function(gamedata, id, x, y, speed, seek)
+  gamedata.actor[id] = type
+  local e = newEntity(x, y, w, h)
+  e.vx = speed
+  e.mapCollisionCallback = function(e, _, _, cx, cy)
+    if cx or cy then gamedata.ground[id] = gamedata.system.time end
+  end
+  gamedata.entity[id] = e
+
+  if speed > 0 then gamedata.face[id] = "right" else gamedata.face[id] = "left" end
+
+  gamedata.control[id] = coroutine.create(control)
 end

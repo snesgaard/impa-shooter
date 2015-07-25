@@ -1,14 +1,21 @@
 input = {}
 
-input.pressed = function(keyboard, latch, buffer, time, k)
-  local t = keyboard[k] or -1e300
-  local l = latch[k] or -1e300
-  local b = buffer[k] or 0.1
-  return (t > l) and (time - t < b)
+function input.isdown(gamedata, key)
+  local p = gamedata.system.pressed[key] or 0
+  local r = gamedata.system.released[key] or 0
+  return p > r
 end
 
-input.latch = function(keyboard, latch, key)
-  latch[key] = keyboard[key]
+function input.ispressed(gamedata, key)
+  local p = gamedata.system.pressed[key] or 0
+  local t = gamedata.system.time
+  local b = gamedata.system.buffer[key] or 0.2
+  return p and t - p < b
 end
+
+function input.latch(gamedata, key)
+  gamedata.system.pressed[key] = 0
+end
+
 
 return input
