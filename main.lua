@@ -3,6 +3,7 @@ require "input"
 require "coroutine"
 require ("modules/AnAL")
 require ("modules/tilephysics")
+require ("modules/coolision")
 local misc = require ("modules/misc")
 local sti = require ("modules/sti")
 require "box"

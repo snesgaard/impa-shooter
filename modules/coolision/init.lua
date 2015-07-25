@@ -122,9 +122,10 @@ coolision.groupedcd = function(seekers, hailers, x, y)
   return collisiontable
 end
 
-coolision.newAxisBox = function(x, y, w, h, callback)
+coolision.newAxisBox = function(id, x, y, w, h, callback)
   local box = {}
 
+  box.id = id
   box.x = x
   box.y = y
   box.w = w

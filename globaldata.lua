@@ -69,6 +69,24 @@ gamedata.init = function(data, f, ...)
   return id
 end
 
+local boxseed = 1
+local available_boxid = {}
+gamedata.addhitbox = function(box)
+  local id = available_boxid[#available_boxid]
+  if id then
+    available_boxid[#available_boxid] = nil
+  else
+    id = boxseed
+    boxseed = boxseed + 1
+  end
+  gamedata.hitbox[id] = box
+  return id
+end
+gamedata.freehitbox = function(id)
+  gamedata.hitbox[id] = nil
+  table.insert(available_boxid, id)
+end
+
 local draworder = {
   "fire",
   "bullet",

@@ -41,4 +41,5 @@ end
 actor.box = function(gamedata, id, x, y)
   gamedata.entity[id] = newEntity(x, y, w, h)
   gamedata.control[id] = coroutine.create(control)
+  local body = coolision.newAxisBox(x - w, y + h, w * 2, h * 2)
 end
