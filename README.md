@@ -7,4 +7,5 @@
 # Weapon Ideas
 ## Rifle
 stuff
+
 more stuff
