@@ -74,6 +74,7 @@ end
 
 local draworder = {
   "box",
+  "damagenumber",
   "fire",
   "bullet",
   "evadetrail",

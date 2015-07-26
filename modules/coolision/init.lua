@@ -170,6 +170,10 @@ coolision.newAxisBox = function(id, x, y, w, h, hail, seek, callback)
   return box
 end
 
+coolision.setcallback = function(box, callback)
+  box.hitcallback = callback
+end
+
 coolision.vflipaxisbox = function(box)
   box.x = -box.x - box.w
 end

@@ -1,9 +1,11 @@
 require "entity"
+require "damagenumber"
 
 actor = actor or {}
 
 local w = 20
 local h = 20
+local dmgnumbervar = 3
 
 local function draw(gamedata, id)
   while true do
@@ -42,7 +44,9 @@ actor.box = function(gamedata, id, x, y)
     local r = gamedata.reduce[id]
     local i = gamedata.invincibility[id]
     local d = combat.calculatedamage(damage, s, r, i)
-    print("pow", d)
+    local e = gamedata.entity[id]
+    local offx = love.math.random(-dmgnumbervar, dmgnumbervar)
+    gamedata.init(gamedata, actor.damagenumber, e.x + offx, e.y + 30, d, 0.5)
     return d
   end
   gamedata.hitbox[id] = {

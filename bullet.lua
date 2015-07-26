@@ -73,9 +73,11 @@ local alive = function(gamedata, id, cache)
     b.x = e.x - w
     coroutine.yield()
   end
+  gamedata.hitbox[id] = {}
   gamedata.visual.drawers[id] = coroutine.create(visual.dudimpact(cache.animations))
   local deadtimer = misc.createtimer(gamedata.system.time, impacttime)
   while deadtimer(gamedata.system.time) do
+    e.vx = 0
     e.vy = 0
     coroutine.yield()
   end
@@ -92,6 +94,13 @@ local control = function(gamedata, id)
     minorimpact = newAnimation(ims[imagepaths.minorimpact], 15, 9, impactframetime, impactframes),
     majorimpact = newAnimation(ims[imagepaths.majorimpact], 15, 18, impactframetime, impactframes),
   }
+  local body = gamedata.hitbox[id].body
+  local callback = function(this, other)
+    if other.applydamage ~= nil then
+      cache.damage = other.applydamage(this.id, 0, 0, 1)
+    end
+  end
+  coolision.setcallback(body, callback)
   gamedata.visual.drawers[id] = coroutine.create(visual.alive(cache.animations))
   return alive(gamedata, id, cache)
 end
@@ -110,13 +119,9 @@ actor.bullet = function(gamedata, id, x, y, speed, seek)
 
   gamedata.control[id] = coroutine.create(control)
 
-  local callback = function(this, other)
-    if other.applydamage ~= nil then other.applydamage(this.id, 0, 0, 1) end
-  end
-
   local body = coolision.newAxisBox(
-    id, x - w, y + h, w, h, gamedata.hitboxtypes.allyprojectile,
-    gamedata.hitboxtypes.enemybody, callback
+    id, x - w, y + h, w * 2, h * 2, gamedata.hitboxtypes.allyprojectile,
+    gamedata.hitboxtypes.enemybody
   )
   gamedata.hitbox[id] = {
     body = body
