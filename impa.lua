@@ -37,13 +37,13 @@ local firekey = "a"
 local evadekey = "lshift"
 
 local imagepath = {
-  idle = "res/idle.png",
-  walk = "res/walk.png",
-  ascend = "res/ascend.png",
-  descend = "res/descend.png",
-  fire = "res/fire.png",
-  arialfire = "res/arialfire.png",
-  evade = "res/evade.png",
+  idle = "res/impa/idle.png",
+  walk = "res/impa/walk.png",
+  ascend = "res/impa/ascend.png",
+  descend = "res/impa/descend.png",
+  fire = "res/impa/gunfire.png",--"res/fire.png",
+  arialfire = "res/impa/arialfire.png",
+  evade = "res/impa/evade.png",
 }
 
 loaders.impa = function(gamedata)
