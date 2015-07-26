@@ -7,10 +7,13 @@ gamedata = {
   maxhealth = {},
   maxstamina = {},
   staminaregen = {},
-  defense = {},
+  soak = {},
+  reduce = {},
+  invincibility = {},
   -- Control and hitbox related data
   control = {},
   hitbox = {},
+  hitboxtypes = {},
   -- Graphical data
   visual = {
     scale = 1,
@@ -69,34 +72,26 @@ gamedata.init = function(data, f, ...)
   return id
 end
 
-local boxseed = 1
-local available_boxid = {}
-gamedata.addhitbox = function(box)
-  local id = available_boxid[#available_boxid]
-  if id then
-    available_boxid[#available_boxid] = nil
-  else
-    id = boxseed
-    boxseed = boxseed + 1
-  end
-  gamedata.hitbox[id] = box
-  return id
-end
-gamedata.freehitbox = function(id)
-  gamedata.hitbox[id] = nil
-  table.insert(available_boxid, id)
-end
-
 local draworder = {
+  "box",
   "fire",
   "bullet",
-  "player",
   "evadetrail",
-  "box",
+  "player",
 }
 
 for ord, ent in pairs(draworder) do
   gamedata.visual.draworder[ent] = ord
+end
+
+local hitboxtypes = {
+  "enemybody",
+  "allybody",
+  "allyprojectile",
+}
+
+for id, ent in pairs(hitboxtypes) do
+  gamedata.hitboxtypes[ent] = id
 end
 
 return gamedata

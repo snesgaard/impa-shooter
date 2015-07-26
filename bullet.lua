@@ -28,6 +28,7 @@ local cleanup = function(gamedata, id)
   gamedata.control[id] = nil
   gamedata.ground[id] = nil
   gamedata.entity[id] = nil
+  gamedata.hitbox[id] = nil
 end
 
 local visual = {}
@@ -62,9 +63,14 @@ end
 
 local alive = function(gamedata, id, cache)
   local e = gamedata.entity[id]
+  local b = gamedata.hitbox[id].body
   local timer = misc.createtimer(gamedata.system.time, lifetime)
-  while timer(gamedata.system.time) and not gamedata.ground[id] do
+  while
+    timer(gamedata.system.time) and not gamedata.ground[id]
+    and not cache.damage
+  do
     e.vy = 0
+    b.x = e.x - w
     coroutine.yield()
   end
   gamedata.visual.drawers[id] = coroutine.create(visual.dudimpact(cache.animations))
@@ -103,4 +109,16 @@ actor.bullet = function(gamedata, id, x, y, speed, seek)
   if speed > 0 then gamedata.face[id] = "right" else gamedata.face[id] = "left" end
 
   gamedata.control[id] = coroutine.create(control)
+
+  local callback = function(this, other)
+    if other.applydamage ~= nil then other.applydamage(this.id, 0, 0, 1) end
+  end
+
+  local body = coolision.newAxisBox(
+    id, x - w, y + h, w, h, gamedata.hitboxtypes.allyprojectile,
+    gamedata.hitboxtypes.enemybody, callback
+  )
+  gamedata.hitbox[id] = {
+    body = body
+  }
 end

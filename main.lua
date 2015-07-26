@@ -1,6 +1,7 @@
 require "globaldata" -- THis will generate the global "data" table
 require "input"
 require "coroutine"
+require "combat"
 require ("modules/AnAL")
 require ("modules/tilephysics")
 require ("modules/coolision")
@@ -109,8 +110,8 @@ function love.load()
   loaders.bullet(gamedata)
   -- Create actors and collect ids
   gamedata.game.playerid = gamedata.init(gamedata, actor.impa, 200, -100)
-  table.insert(gamedata.actor, gamedata.game.playerid)
-  table.insert(gamedata.actor, gamedata.init(gamedata, actor.statsui))
+  gamedata.init(gamedata, actor.statsui)
+  gamedata.init(gamedata, actor.box, 300, -100)
 end
 
 function love.update(dt)
@@ -124,6 +125,9 @@ function love.update(dt)
   for _, e in pairs(gamedata.entity) do
     mapAdvanceEntity(tmap, "game", e, dt)
   end
+  -- Now hit detection on all registered hitboxes
+  local seekers, hailers = coolision.sortcollisiongroups(gamedata.hitbox)
+  coolision.docollisiongroups(seekers, hailers)
   -- Update control state for all actors
   for id, cont in pairs(gamedata.control) do
     coroutine.resume(cont, gamedata, id)
@@ -155,7 +159,7 @@ function love.draw()
   -- Sort according to layer or id
   table.sort(sorted_drawers, function(t1, t2)
     if t1.ord ~= t2.ord then
-      return t1.ord > t2.ord
+      return t1.ord < t2.ord
     else
       return t1.id < t2.id
     end

@@ -121,9 +121,42 @@ coolision.groupedcd = function(seekers, hailers, x, y)
 
   return collisiontable
 end
+coolision.sortcollisiongroups = function(hitboxes)
+  local seekers = {}
+  local hailers = {}
+  for _, boxgroup in pairs(hitboxes) do
+    for _, box in pairs(boxgroup) do
+      for _, seek in pairs(box.seek) do
+        local seektable = seekers[seek] or {}
+        table.insert(seektable, box)
+        seekers[seek] = seektable
+      end
+      for _, hail in pairs(box.hail) do
+        local hailtable = hailers[hail] or {}
+        table.insert(hailtable, box)
+        hailers[hail] = hailtable
+      end
+    end
+  end
+  return seekers, hailers
+end
+coolision.docollisiongroups = function(seekers, hailers)
+  for type, subhailers in pairs(hailers) do
+    local subseekers = seekers[type] or {}
+    local collisiontable = coolision.groupedcd(subseekers, subhailers, 1, 0)
+    for boxa, coolisions in pairs(collisiontable) do
+      for _, boxb in pairs(coolisions) do
+        if boxa.hitcallback then boxa.hitcallback(boxa, boxb) end
+        if boxb.hitcallback then boxb.hitcallback(boxb, boxa) end
+      end
+    end
+  end
+end
 
-coolision.newAxisBox = function(id, x, y, w, h, callback)
+coolision.newAxisBox = function(id, x, y, w, h, hail, seek, callback)
   local box = {}
+  if type(seek) ~= "table" then seek = {seek} end
+  if type(hail) ~= "table" then hail = {hail} end
 
   box.id = id
   box.x = x
@@ -131,6 +164,8 @@ coolision.newAxisBox = function(id, x, y, w, h, callback)
   box.w = w
   box.h = h
   box.hitcallback = callback
+  box.seek = seek
+  box.hail = hail
 
   return box
 end
