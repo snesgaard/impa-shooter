@@ -29,8 +29,12 @@ misc.createrepeatdrawer = function(anim)
   return co
 end
 misc.createoneshotdrawer = function(anime)
-  anim:setMode("once")
-  return misc.createrepeatdrawer(anim)
+  anime:setMode("once")
+  return misc.createrepeatdrawer(anime)
+end
+misc.createbouncedrawer = function(anime)
+  anime:setMode("bounce")
+  return misc.createrepeatdrawer(anime)
 end
 misc.draw_sprite_entity = function(anim, entity, face)
   local e = entity
