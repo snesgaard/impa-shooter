@@ -40,6 +40,8 @@ gamedata = {
   game = {
     activelevel = "",
     playerid,
+    maxammunition = {},
+    missingammunition = {},
   },
   -- Level related data
   tilemaps = {},

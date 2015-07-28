@@ -34,7 +34,7 @@ local fireframes = 4
 local riflefiretime = 0.4
 local riflefireframes = 4
 local riflefireframetime = riflefiretime / riflefireframes
-local riflereloadtime = 0.75
+local riflereloadtime = 0.5
 local riflereloadframes = 5
 local riflereloadft = riflereloadtime / (riflereloadframes * 2)
 
@@ -170,7 +170,7 @@ end
 local normal = {}
 local fire = {}
 local evade = {}
-local riflefire = {}
+local riflereload = {}
 -- State definitions
 normal.begin = function(gamedata, id, cache)
   gamedata.visual.drawers[id] = cache.draw_coroutines.normal
@@ -209,6 +209,20 @@ normal.run = function(gamedata, id, cache)
     return fire.begin(gamedata, id, cache)
   end
   return normal.run(gamedata, id, cache)
+end
+
+riflereload.begin = function(gamedata, id, cache)
+  local missammo = gamedata.game.missingammunition.rifle or 0
+  if missammo <= 1 then
+    gamedata.game.missingammunition.rifle = nil
+  else
+    gamedata.game.missingammunition.rifle = missammo - 1
+  end
+  local reloadtimer = misc.createtimer(gamedata.system.time, riflereloadtime)
+  gamedata.visual.drawers[id] = misc.createbouncedrawer(cache.animations.riflecomboreload)
+  while reloadtimer(gamedata.system.time) do
+    coroutine.yield()
+  end
 end
 
 fire.movecontrol = function(gamedata, id)
@@ -253,6 +267,8 @@ end
 fire.rifle = function(gamedata, id, cache)
   local movecontrol = fire.movecontrol
   local pretimer = misc.createtimer(gamedata.system.time, riflefireframetime)
+  local missammo = gamedata.game.missingammunition.rifle or 0
+  gamedata.game.missingammunition.rifle = missammo + 1
   while pretimer(gamedata.system.time) do
     movecontrol(gamedata, id)
     coroutine.yield()
@@ -270,16 +286,30 @@ fire.rifle = function(gamedata, id, cache)
     gamedata, actor.bullet, entity.x + exhaustcoords.x * sx,
     entity.y + exhaustcoords.y, 250 * sx
   )
-  local posttimer = misc.createtimer(gamedata.system.time, riflefireframetime * 3)
+  local inittime = gamedata.system.time
+  local posttimer = misc.createtimer(inittime, riflefireframetime * 3)
+  local reloadtimer = misc.createtimer(inittime, riflefireframetime)
+  local botched = false
   while posttimer(gamedata.system.time) do
     movecontrol(gamedata, id)
+    local r = input.ispressed(gamedata, reloadkey)
+    if r and not botched then
+      input.latch(gamedata, reloadkey)
+      if not reloadtimer(gamedata.system.time) then
+        return riflereload.begin(gamedata, id, cache)
+      else
+        botched = true
+      end
+    end
     coroutine.yield()
   end
+  --[[
   local reloadtimer = misc.createtimer(gamedata.system.time, riflereloadtime)
   gamedata.visual.drawers[id] = misc.createbouncedrawer(cache.animations.riflecomboreload)
   while reloadtimer(gamedata.system.time) do
     coroutine.yield()
   end
+  --]]
 end
 fire.begin = function(gamedata, id, cache)
   local createentry = function(pressed, ground, arial, co)
@@ -398,4 +428,5 @@ actor.impa = function(gamedata, id, x, y)
   -- Init game related stats
   gamedata.maxhealth[id] = 4
   gamedata.maxstamina[id] = 2
+  gamedata.game.maxammunition.rifle = 3
 end

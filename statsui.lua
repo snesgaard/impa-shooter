@@ -1,6 +1,7 @@
 actor = actor or {}
 
 local radius = 0.02
+
 local drawstats = function(gamedata, id)
   while true do
     local pid = gamedata.game.playerid
@@ -32,6 +33,16 @@ local drawstats = function(gamedata, id)
     for i = 1,renderstam do
       love.graphics.circle(
         "fill", radius * 1.5 + offset * (i - 1), radius * 4, radius, 100
+      )
+    end
+    -- Render ammunition:
+    local maxa = gamedata.game.maxammunition.rifle
+    local missa = gamedata.game.missingammunition.rifle or 0
+    local renderammo =  maxa - missa
+    love.graphics.setColor(55, 55, 55)
+    for ammo = 1, renderammo do
+      love.graphics.circle(
+        "fill", radius * 1.5 + offset * (ammo - 1), radius * 6.5, radius, 100
       )
     end
     love.graphics.setColor(255, 255, 255)
