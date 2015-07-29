@@ -16,6 +16,8 @@ pressed shortly after firing the rifle, a round will be reloaded. In addition
 a slight damage buff will be granted for a short duration. This can be chained
 with the buff becoming increasingly better. It could for example stack 3 times
 and at the highest level grant enemy penetration.
+The timer should be louse so that the ispressed defition can stretch from a
+non-combo frame to a combo frame
 
 ## Sling
 The sling launches a projectile in a ballistic arc. When the projectile connects
