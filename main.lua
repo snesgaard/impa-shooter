@@ -108,6 +108,7 @@ function love.load()
   loaders.impa(gamedata)
   loaders.gunexhaust(gamedata)
   loaders.bullet(gamedata)
+  loaders.statsui(gamedata)
   -- Create actors and collect ids
   gamedata.game.playerid = gamedata.init(gamedata, actor.impa, 200, -100)
   gamedata.init(gamedata, actor.statsui)
