@@ -2,6 +2,7 @@ require "math"
 local addtrail = require "evadetrail"
 require "gunexhaust"
 require "bullet"
+require ("actors/rifle")
 
 loaders = loaders or {}
 actor = actor or {}
@@ -49,10 +50,10 @@ local imagepath = {
   walk = "res/impa/walk.png",
   ascend = "res/impa/ascend.png",
   descend = "res/impa/descend.png",
-  fire = "res/impa/gunfire.png",--"res/fire.png",
+  fire = "res/impa/gunfire.png",
   arialfire = "res/impa/arialfire.png",
   evade = "res/impa/evade.png",
-  riflefire = "res/impa/riflefire.png",
+  riflefire = "res/impa/riflefire.png", -- To be removed when new weapon sturcture
   riflecomboreload = "res/impa/riflecomboreload.png",
 }
 
@@ -60,6 +61,7 @@ loaders.impa = function(gamedata)
   for _, impath in pairs(imagepath) do
     loadimage(gamedata, impath)
   end
+  --loaders.rifle(gamedata)
 end
 
 local draw_coroutines_creator = {}
@@ -464,4 +466,10 @@ actor.impa = function(gamedata, id, x, y)
   gamedata.maxhealth[id] = 4
   gamedata.maxstamina[id] = 2
   gamedata.game.maxammunition.rifle = 3
+  -- Set key binding
+  gamedata.keys.jump = jump
+  gamedata.keys.fire = firekey
+  gamedata.keys.reload = reloadkey
+  -- Initialize weapons
+  gamedata.init(gamedata, actors.rifle)
 end

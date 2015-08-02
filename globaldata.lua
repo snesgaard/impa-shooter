@@ -43,6 +43,13 @@ gamedata = {
     maxammunition = {},
     missingammunition = {},
   },
+  keys = {},
+  weapons = {
+    maxammo = {},
+    usedammo = {},
+    fire = {},
+    reload = {},
+  },
   -- Level related data
   tilemaps = {},
   entity = {},

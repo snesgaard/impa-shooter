@@ -7,8 +7,8 @@ require ("modules/tilephysics")
 require ("modules/coolision")
 local misc = require ("modules/misc")
 local sti = require ("modules/sti")
-require "box"
-require "impa"
+require ("actors/box")
+require ("actors/impa")
 require "statsui"
 
 function loadanimation(path, ...)
