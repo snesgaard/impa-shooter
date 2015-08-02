@@ -25,7 +25,7 @@ local groundbuffer = 0.1
 local walkspeed = 75
 local jumpspeed = 200
 local evadeduration = 0.1
-local evadedistance = 30
+local evadedistance = 40
 local evadespeed = evadedistance / evadeduration
 local evadesampling = 0.025
 local fireframetime = 0.05
@@ -385,26 +385,44 @@ evade.begin = function(gamedata, id, cache)
   gamedata.visual.drawers[id] = draw_coroutines_creator.evade(cache.animations)
   local r = input.isdown(gamedata, "right")
   local l = input.isdown(gamedata, "left")
+  local u = input.isdown(gamedata, "up")
+  local d = input.isdown(gamedata, "down")
+  local vx = 0.0
+  local vy = 0.0
   if r then
     gamedata.face[id] = "right"
-  elseif l then
+    vx = vx + 1
+  end
+  if l then
     gamedata.face[id] = "left"
+    vx = vx - 1
   end
-  local e = gamedata.entity[id]
-  if gamedata.face[id] == "right" then
-    e.vx = evadespeed
+  if u then
+    vy = vy + 1
+  end
+  if d then
+    vy = vy - 1
+  end
+  local length = math.sqrt(vx * vx + vy * vy)
+  if length ~= 0 then
+    vx = evadespeed * vx / length
+    vy = evadespeed * vy / length
   else
-    e.vx = -evadespeed
+    vx = 0
+    vy = 0
   end
-  return evade.run(gamedata, id, cache)
+  return evade.run(gamedata, id, cache, vx, vy)
 end
-evade.run = function(gamedata, id, cache)
+evade.run = function(gamedata, id, cache, vx, vy)
   local timer = misc.createtimer(gamedata.system.time, evadeduration)
   local e = gamedata.entity[id]
   while timer(gamedata.system.time) do
-    e.vy = 0
+    e.vx = vx
+    e.vy = vy
     coroutine.yield()
   end
+  e.vy = 0
+  e.vx = 0
   return normal.begin(gamedata, id, cache)
 end
 

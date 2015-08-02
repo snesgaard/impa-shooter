@@ -32,6 +32,7 @@ end
 
 
 function love.keypressed(key, isrepeat)
+  print(key)
   gamedata.system.pressed[key] = gamedata.system.time
 end
 
