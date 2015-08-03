@@ -10,6 +10,7 @@ gamedata = {
   soak = {},
   reduce = {},
   invincibility = {},
+  speed = {},
   -- Control and hitbox related data
   control = {},
   hitbox = {},
@@ -22,6 +23,7 @@ gamedata = {
     leveldraw,
     uidrawers = {},
     images = {}, -- Contains all loaded images, indexed by path
+    meshes = {},
     shaders = {},
     width = 0,
     height = 0,
@@ -45,6 +47,7 @@ gamedata = {
   },
   keys = {},
   weapons = {
+    inuse = {},
     maxammo = {},
     usedammo = {},
     fire = {},

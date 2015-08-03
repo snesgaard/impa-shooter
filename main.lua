@@ -1,4 +1,5 @@
 require "globaldata" -- THis will generate the global "data" table
+require "game"
 require "input"
 require "coroutine"
 require "combat"

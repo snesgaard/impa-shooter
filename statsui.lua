@@ -56,8 +56,10 @@ local drawstats = function(gamedata, id)
       )
     end
     -- Render ammunition:
-    local maxa = gamedata.game.maxammunition.rifle
-    local missa = gamedata.game.missingammunition.rifle or 0
+    -- TODO should pick whatever selected weapon
+    local wid = gamedata.weapons.inuse[pid]
+    local maxa = gamedata.weapons.maxammo[wid]
+    local missa = gamedata.weapons.usedammo[wid] or 0
     local renderammo =  maxa - missa
     love.graphics.setColor(255, 255, 255)
     for ammo = 1, renderammo do

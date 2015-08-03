@@ -8,14 +8,7 @@ loaders = loaders or {}
 actor = actor or {}
 
 -- Utilities
-local loadimage = function(gamedata, path)
-  gamedata.visual.images[path] = love.graphics.newImage(path)
-end
-local onground = function(gamedata, id, buffer)
-  local g = gamedata.ground[id]
-  local t = gamedata.system.time
-  return g and t - g < buffer
-end
+
 
 -- Defines
 local w = 4
@@ -59,7 +52,7 @@ local imagepath = {
 
 loaders.impa = function(gamedata)
   for _, impath in pairs(imagepath) do
-    loadimage(gamedata, impath)
+    game.loadimage(gamedata, impath)
   end
   --loaders.rifle(gamedata)
 end
@@ -98,7 +91,7 @@ draw_coroutines_creator.normal = function(animations)
   local co_ground = coroutine.create(normal.ground)
   local co_arial = coroutine.create(normal.arial)
   normal.runner = function(gamedata, id)
-    local g = onground(gamedata, id, groundbuffer)
+    local g = game.onground(gamedata, id, groundbuffer)
     if g then
       coroutine.resume(co_ground, gamedata, id)
     else
@@ -111,7 +104,7 @@ draw_coroutines_creator.normal = function(animations)
 end
 draw_coroutines_creator.fire = function(animeground, animearial)
   return coroutine.create(function(gamedata, id)
-    local g = onground(gamedata, id, groundbuffer)
+    local g = game.onground(gamedata, id, groundbuffer)
     local resetanimation = function(anime)
       anime:setMode("once")
       anime:reset()
@@ -132,7 +125,7 @@ draw_coroutines_creator.fire = function(animeground, animearial)
       return newa
     end
     while true do
-      g = onground(gamedata, id, groundbuffer)
+      g = game.onground(gamedata, id, groundbuffer)
       -- Transition to normal ground fire animation
       if g and anime == animearial and not anime == animeground then
         anime = swapanimation(animearial, animeground)
@@ -183,7 +176,7 @@ normal.run = function(gamedata, id, cache)
   local l = input.isdown(gamedata, "left")
   local e = gamedata.entity[id]
   local s = input.ispressed(gamedata, jumpkey)
-  local g = onground(gamedata, id, groundbuffer)
+  local g = game.onground(gamedata, id, groundbuffer)
   local a = input.ispressed(gamedata, firekey)
   local ev = input.ispressed(gamedata, evadekey)
   -- Jumping controls
@@ -217,7 +210,7 @@ fire.movecontrol = function(gamedata, id)
   local e = gamedata.entity[id]
   local r = input.isdown(gamedata, "right")
   local l = input.isdown(gamedata, "left")
-  local g = onground(gamedata, id, groundbuffer)
+  local g = game.onground(gamedata, id, groundbuffer)
   if not g and r then
     e.vx = walkspeed
   elseif not g and l then
@@ -326,6 +319,7 @@ fire.rifle = function(gamedata, id, cache)
   --]]
 end
 fire.begin = function(gamedata, id, cache)
+  --[[
   local createentry = function(pressed, ground, arial, co)
     return {pressed = pressed, ground = ground, arial = arial, co = co}
   end
@@ -340,6 +334,7 @@ fire.begin = function(gamedata, id, cache)
       fire.rifle
     )
   }
+
   table.sort(firestates, function(v1, v2) return v1.pressed < v2.pressed end)
   local firestate = firestates[#firestates]
   local animeground = firestate.ground
@@ -347,6 +342,7 @@ fire.begin = function(gamedata, id, cache)
   gamedata.visual.drawers[id] = draw_coroutines_creator.fire(
     animeground, animearial
   )
+  ]]--
   -- Set face
   local r = input.isdown(gamedata, "right")
   local l = input.isdown(gamedata, "left")
@@ -355,17 +351,23 @@ fire.begin = function(gamedata, id, cache)
   elseif l then
     gamedata.face[id] = "left"
   end
-
+  -- Selection of firing state function should go here
+  --[[
   if firestate.co == fire.rifle then
     local amiss = gamedata.game.missingammunition.rifle or 0
     local amax = gamedata.game.maxammunition.rifle
     if amax <= amiss then return normal.begin(gamedata, id, cache) end
   end
   local co = coroutine.create(firestate.co)
-  return fire.run(gamedata, id, cache, co)
+  ]]--
+  local wid = cache.weaponids.rifle
+  local co = coroutine.create(gamedata.weapons.fire[wid])
+  return fire.run(gamedata, id, cache, co, wid)
 end
-fire.run = function(gamedata, id, cache, co)
-  coroutine.resume(co, gamedata, id, cache)
+
+fire.run = function(gamedata, id, cache, co, wid)
+  fire.movecontrol(gamedata, id)
+  coroutine.resume(co, gamedata, wid, id)
   coroutine.yield()
   local ev = input.ispressed(gamedata, evadekey)
   if ev then
@@ -428,30 +430,33 @@ evade.run = function(gamedata, id, cache, vx, vy)
   return normal.begin(gamedata, id, cache)
 end
 
-local _recursive_control = function(gamedata, id)
-  local ims = gamedata.visual.images
-  local cache = {}
-  cache.animations = {
-    idle = newAnimation(ims[imagepath.idle], 48, 48, 0.2, 4),
-    walk = newAnimation(ims[imagepath.walk], 48, 48, 0.15, 4),
-    descend = newAnimation(ims[imagepath.descend], 48, 48, 0.15, 2),
-    ascend = newAnimation(ims[imagepath.ascend], 48, 48, 0.15, 2),
-    fire = newAnimation(ims[imagepath.fire], 48, 48, fireframetime, fireframes),
-    arialfire = newAnimation(ims[imagepath.arialfire], 48, 48, fireframetime, fireframes),
-    evade = newAnimation(ims[imagepath.evade], 48, 48, 0.15, 2),
-    riflefire = newAnimation(ims[imagepath.riflefire], 48, 48, riflefireframetime, riflefireframes),
-    riflecomboreload = newAnimation(ims[imagepath.riflecomboreload], 48, 48, riflereloadft, riflereloadframes),
-  }
-  cache.draw_coroutines = {
-    normal = draw_coroutines_creator.normal(cache.animations),
-    fire = draw_coroutines_creator.fire(cache.animations),
-  }
-  return normal.begin(gamedata, id, cache)
+local create_recursive_control = function(cache)
+  local f = function(gamedata, id)
+    local ims = gamedata.visual.images
+    cache.animations = {
+      idle = newAnimation(ims[imagepath.idle], 48, 48, 0.2, 4),
+      walk = newAnimation(ims[imagepath.walk], 48, 48, 0.15, 4),
+      descend = newAnimation(ims[imagepath.descend], 48, 48, 0.15, 2),
+      ascend = newAnimation(ims[imagepath.ascend], 48, 48, 0.15, 2),
+      fire = newAnimation(ims[imagepath.fire], 48, 48, fireframetime, fireframes),
+      arialfire = newAnimation(ims[imagepath.arialfire], 48, 48, fireframetime, fireframes),
+      evade = newAnimation(ims[imagepath.evade], 48, 48, 0.15, 2),
+      riflefire = newAnimation(ims[imagepath.riflefire], 48, 48, riflefireframetime, riflefireframes),
+      riflecomboreload = newAnimation(ims[imagepath.riflecomboreload], 48, 48, riflereloadft, riflereloadframes),
+    }
+    cache.draw_coroutines = {
+      normal = draw_coroutines_creator.normal(cache.animations),
+      fire = draw_coroutines_creator.fire(cache.animations),
+    }
+    return normal.begin(gamedata, id, cache)
+  end
+  return f
 end
 
 local control = _recursive_control
 local type = "player"
 actor.impa = function(gamedata, id, x, y)
+  local cache = {}
   gamedata.actor[id] = "player"
   gamedata.entity[id] = newEntity(x, y, w, h)
   gamedata.entity[id].mapCollisionCallback = function(e, _, _, cx, cy)
@@ -459,7 +464,6 @@ actor.impa = function(gamedata, id, x, y)
       gamedata.ground[id] = gamedata.system.time
     end
   end
-  gamedata.control[id] = coroutine.create(control)
   gamedata.face[id] = "left"
   gamedata.visual.layer[id] = layer
   -- Init game related stats
@@ -471,5 +475,9 @@ actor.impa = function(gamedata, id, x, y)
   gamedata.keys.fire = firekey
   gamedata.keys.reload = reloadkey
   -- Initialize weapons
-  gamedata.init(gamedata, actors.rifle)
+  cache.weaponids = {
+    rifle = gamedata.init(gamedata, actors.rifle)
+  }
+  gamedata.weapons.inuse[id] = cache.weaponids.rifle
+  gamedata.control[id] = coroutine.create(create_recursive_control(cache))
 end

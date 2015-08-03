@@ -8,6 +8,8 @@ local reloadtime = 0.5
 local reloadframes = 5
 local reloadframettime = reloadtime / (reloadframes * 2)
 
+local exhaustcoords = {x = 18, y = 1}
+
 images = {
   riflefire = "res/impa/riflefire.png",
   riflecomboreload = "res/impa/riflecomboreload.png",
@@ -22,32 +24,19 @@ end
 local fire = {}
 local reload = {}
 
-fire.movecontrol = function(gamedata, id)
-  local e = gamedata.entity[id]
-  local r = input.isdown(gamedata, "right")
-  local l = input.isdown(gamedata, "left")
-  local g = onground(gamedata, id, groundbuffer)
-  if not g and r then
-    e.vx = walkspeed
-  elseif not g and l then
-    e.vx = -walkspeed
-  else
-    e.vx = 0
-  end
-end
 fire.run = function(gamedata, id, masterid)
-  local maxa = gamedata.maxammo[id]
-  local useda = gamedata.usedammo[id] or 0
+  local maxa = gamedata.weapons.maxammo[id]
+  local useda = gamedata.weapons.usedammo[id] or 0
   if useda >= maxa then -- play botched fire animation / state here
     return
   end
   local anime = newAnimation(
-    gamedata.visual.images[images.riflefire], 48, 48, fireframetime, fireframes
+    gamedata.visual.images[images.riflefire], 48, 48, fireframetime,
+    fireframes
   )
   gamedata.visual.drawers[masterid] = misc.createoneshotdrawer(anime)
-  local pretimer = misc.createtimer(gamedata.system.time, riflefireframetime)
+  local pretimer = misc.createtimer(gamedata.system.time, fireframetime)
   while pretimer(gamedata.system.time) do
-    movecontrol(gamedata, id)
     coroutine.yield()
   end
   -- Spawn bullet here
@@ -65,10 +54,9 @@ fire.run = function(gamedata, id, masterid)
     entity.y + exhaustcoords.y, 250 * sx
   )
   local inittime = gamedata.system.time
-  local posttimer = misc.createtimer(inittime, riflefireframetime * (fireframes - 1))
+  local posttimer = misc.createtimer(inittime, fireframetime * (fireframes - 1))
   while posttimer(gamedata.system.time) do
-    gamedata.keys.reload = reloadkey
-    fire.movecontrol(gamedata, id)
+    local reloadkey = gamedata.keys.reload
     local r = input.ispressed(gamedata, reloadkey)
     if r then
       return reload.combo(gamedata, id, masterid)
@@ -79,28 +67,27 @@ end
 
 reload.combo = function(gamedata, id, masterid)
   local usedammo = gamedata.weapons.usedammo[id] or 0
-  if missammo <= 1 then
+  if usedammo <= 1 then
     gamedata.weapons.usedammo[id] = nil
   else
     gamedata.weapons.usedammo[id] = usedammo - 1
   end
   local reloadtimer = misc.createtimer(gamedata.system.time, reloadtime)
+  local im = gamedata.visual.images[images.riflecomboreload]
   local anime = newAnimation(
-    gamedata.visual.images[images.riflecomboreload], 48, 48, reloadframes,
-    reloadframettime
+    im, 48, 48, reloadframettime, reloadframes
   )
-  gamedata.visual.drawers[id] = misc.createbouncedrawer(anime)
+  gamedata.visual.drawers[masterid] = misc.createbouncedrawer(anime)
   local nextrun
   while reloadtimer(gamedata.system.time) do
     local firekey = gamedata.keys.fire
     if input.ispressed(gamedata, firekey) then
       input.latch(gamedata, firekey)
-      nextrun = fire.begin
+      nextrun = fire.run
     end
-    fire.movecontrol(gamedata, id)
     coroutine.yield()
   end
-  if nextrun then return nextrun(gamedata, id, cache) end
+  if nextrun then return nextrun(gamedata, id, masterid) end
 end
 reload.normal = reload.combo -- Should be its own thing
 
