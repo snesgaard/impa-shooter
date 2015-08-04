@@ -42,8 +42,6 @@ gamedata = {
   game = {
     activelevel = "",
     playerid,
-    maxammunition = {},
-    missingammunition = {},
   },
   keys = {},
   weapons = {

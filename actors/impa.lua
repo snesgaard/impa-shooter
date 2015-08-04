@@ -46,15 +46,13 @@ local imagepath = {
   fire = "res/impa/gunfire.png",
   arialfire = "res/impa/arialfire.png",
   evade = "res/impa/evade.png",
-  riflefire = "res/impa/riflefire.png", -- To be removed when new weapon sturcture
-  riflecomboreload = "res/impa/riflecomboreload.png",
 }
 
 loaders.impa = function(gamedata)
   for _, impath in pairs(imagepath) do
     game.loadimage(gamedata, impath)
   end
-  --loaders.rifle(gamedata)
+  loaders.rifle(gamedata)
 end
 
 local draw_coroutines_creator = {}
@@ -179,6 +177,7 @@ normal.run = function(gamedata, id, cache)
   local g = game.onground(gamedata, id, groundbuffer)
   local a = input.ispressed(gamedata, firekey)
   local ev = input.ispressed(gamedata, evadekey)
+  local re = input.ispressed(gamedata, reloadkey)
   -- Jumping controls
   if s and g then
     input.latch(gamedata, jumpkey)
@@ -220,27 +219,6 @@ fire.movecontrol = function(gamedata, id)
   end
 end
 
-riflereload.begin = function(gamedata, id, cache)
-  local missammo = gamedata.game.missingammunition.rifle or 0
-  if missammo <= 1 then
-    gamedata.game.missingammunition.rifle = nil
-  else
-    gamedata.game.missingammunition.rifle = missammo - 1
-  end
-  local reloadtimer = misc.createtimer(gamedata.system.time, riflereloadtime)
-  gamedata.visual.drawers[id] = misc.createbouncedrawer(cache.animations.riflecomboreload)
-  local nextrun
-  while reloadtimer(gamedata.system.time) do
-    if input.ispressed(gamedata, firekey) then
-      input.latch(gamedata, firekey)
-      nextrun = fire.begin
-    end
-    fire.movecontrol(gamedata, id)
-    coroutine.yield()
-  end
-  if nextrun then return nextrun(gamedata, id, cache) end
-end
-
 fire.gun = function(gamedata, id)
   local movecontrol = fire.movecontrol
   local pretimer = misc.createtimer(gamedata.system.time, fireframetime)
@@ -267,82 +245,7 @@ fire.gun = function(gamedata, id)
     coroutine.yield()
   end
 end
-fire.rifle = function(gamedata, id, cache)
-  local movecontrol = fire.movecontrol
-  local pretimer = misc.createtimer(gamedata.system.time, riflefireframetime)
-  local missammo = gamedata.game.missingammunition.rifle or 0
-  gamedata.game.missingammunition.rifle = missammo + 1
-  while pretimer(gamedata.system.time) do
-    movecontrol(gamedata, id)
-    coroutine.yield()
-  end
-  -- Spawn bullet here
-  local entity = gamedata.entity[id]
-  local face = gamedata.face[id]
-  local sx = 1
-  if face == "left" then sx = -1 end
-  gamedata.init(
-    gamedata, actor.gunexhaust, entity.x + exhaustcoords.x * sx,
-    entity.y + exhaustcoords.y, face
-  )
-  gamedata.init(
-    gamedata, actor.bullet, entity.x + exhaustcoords.x * sx,
-    entity.y + exhaustcoords.y, 250 * sx
-  )
-  local inittime = gamedata.system.time
-  local posttimer = misc.createtimer(inittime, riflefireframetime * 5)
-  local actiontimer = misc.createtimer(inittime, riflefireframetime)
-  local botched = false
-  while posttimer(gamedata.system.time) do
-    fire.movecontrol(gamedata, id)
-    local r = input.ispressed(gamedata, reloadkey)
-    if r and not botched then
-      input.latch(gamedata, reloadkey)
-      if not actiontimer(gamedata.system.time) then
-        return riflereload.begin(gamedata, id, cache)
-      else
-        botched = true
-      end
-    end
-    local a = input.ispressed(gamedata, firekey)
-    if a and not actiontimer(gamedata.system.time) then
-      return fire.begin(gamedata, id, cache)
-    end
-    coroutine.yield()
-  end
-  --[[
-  local reloadtimer = misc.createtimer(gamedata.system.time, riflereloadtime)
-  gamedata.visual.drawers[id] = misc.createbouncedrawer(cache.animations.riflecomboreload)
-  while reloadtimer(gamedata.system.time) do
-    coroutine.yield()
-  end
-  --]]
-end
 fire.begin = function(gamedata, id, cache)
-  --[[
-  local createentry = function(pressed, ground, arial, co)
-    return {pressed = pressed, ground = ground, arial = arial, co = co}
-  end
-  local anime = cache.animations
-  local firestates = {
-    createentry(
-      gamedata.system.pressed["1"] or 1, anime.fire, anime.arialfire,
-      fire.gun
-    ),
-    createentry(
-      gamedata.system.pressed["2"] or 0, anime.riflefire, anime.riflefire,
-      fire.rifle
-    )
-  }
-
-  table.sort(firestates, function(v1, v2) return v1.pressed < v2.pressed end)
-  local firestate = firestates[#firestates]
-  local animeground = firestate.ground
-  local animearial = firestate.arial
-  gamedata.visual.drawers[id] = draw_coroutines_creator.fire(
-    animeground, animearial
-  )
-  ]]--
   -- Set face
   local r = input.isdown(gamedata, "right")
   local l = input.isdown(gamedata, "left")
@@ -352,14 +255,7 @@ fire.begin = function(gamedata, id, cache)
     gamedata.face[id] = "left"
   end
   -- Selection of firing state function should go here
-  --[[
-  if firestate.co == fire.rifle then
-    local amiss = gamedata.game.missingammunition.rifle or 0
-    local amax = gamedata.game.maxammunition.rifle
-    if amax <= amiss then return normal.begin(gamedata, id, cache) end
-  end
-  local co = coroutine.create(firestate.co)
-  ]]--
+
   local wid = cache.weaponids.rifle
   local co = coroutine.create(gamedata.weapons.fire[wid])
   return fire.run(gamedata, id, cache, co, wid)
@@ -383,6 +279,7 @@ fire.run = function(gamedata, id, cache, co, wid)
   end
   return fire.run(gamedata, id, cache, co)
 end
+
 
 
 evade.begin = function(gamedata, id, cache)
@@ -441,8 +338,6 @@ local create_recursive_control = function(cache)
       fire = newAnimation(ims[imagepath.fire], 48, 48, fireframetime, fireframes),
       arialfire = newAnimation(ims[imagepath.arialfire], 48, 48, fireframetime, fireframes),
       evade = newAnimation(ims[imagepath.evade], 48, 48, 0.15, 2),
-      riflefire = newAnimation(ims[imagepath.riflefire], 48, 48, riflefireframetime, riflefireframes),
-      riflecomboreload = newAnimation(ims[imagepath.riflecomboreload], 48, 48, riflereloadft, riflereloadframes),
     }
     cache.draw_coroutines = {
       normal = draw_coroutines_creator.normal(cache.animations),
@@ -469,7 +364,6 @@ actor.impa = function(gamedata, id, x, y)
   -- Init game related stats
   gamedata.maxhealth[id] = 4
   gamedata.maxstamina[id] = 2
-  gamedata.game.maxammunition.rifle = 3
   -- Set key binding
   gamedata.keys.jump = jump
   gamedata.keys.fire = firekey

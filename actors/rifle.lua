@@ -10,14 +10,14 @@ local reloadframettime = reloadtime / (reloadframes * 2)
 
 local exhaustcoords = {x = 18, y = 1}
 
-images = {
+local images = {
   riflefire = "res/impa/riflefire.png",
   riflecomboreload = "res/impa/riflecomboreload.png",
 }
 
 loaders.rifle = function(gamedata)
   for _, path in pairs(images) do
-    gamedata.visual.images[path] = path
+    gamedata.visual.images[path] = love.graphics.newImage(path)
   end
 end
 
@@ -55,11 +55,22 @@ fire.run = function(gamedata, id, masterid)
   )
   local inittime = gamedata.system.time
   local posttimer = misc.createtimer(inittime, fireframetime * (fireframes - 1))
+  local waittimer = misc.createtimer(inittime, fireframetime)
   while posttimer(gamedata.system.time) do
     local reloadkey = gamedata.keys.reload
+    local firekey = gamedata.keys.fire
     local r = input.ispressed(gamedata, reloadkey)
-    if r then
-      return reload.combo(gamedata, id, masterid)
+    local a = input.ispressed(gamedata, firekey)
+    local w = waittimer(gamedata.system.time)
+    if not w then
+      if a then
+        input.latch(gamedata, firekey)
+        return fire.run(gamedata, id, masterid)
+      elseif r then
+        input.latch(gamedata, reloadkey)
+        return reload.combo(gamedata, id, masterid)
+
+      end
     end
     coroutine.yield()
   end
