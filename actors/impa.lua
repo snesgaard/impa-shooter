@@ -163,7 +163,7 @@ end
 local normal = {}
 local fire = {}
 local evade = {}
-local riflereload = {}
+local reload = {}
 -- State definitions
 normal.begin = function(gamedata, id, cache)
   gamedata.visual.drawers[id] = cache.draw_coroutines.normal
@@ -201,6 +201,9 @@ normal.run = function(gamedata, id, cache)
   elseif a then
     input.latch(gamedata, firekey)
     return fire.begin(gamedata, id, cache)
+  elseif re then
+    input.latch(gamedata, reloadkey)
+    return reload.begin(gamedata, id, cache)
   end
   return normal.run(gamedata, id, cache)
 end
@@ -255,7 +258,6 @@ fire.begin = function(gamedata, id, cache)
     gamedata.face[id] = "left"
   end
   -- Selection of firing state function should go here
-
   local wid = cache.weaponids.rifle
   local co = coroutine.create(gamedata.weapons.fire[wid])
   return fire.run(gamedata, id, cache, co, wid)
@@ -280,7 +282,20 @@ fire.run = function(gamedata, id, cache, co, wid)
   return fire.run(gamedata, id, cache, co)
 end
 
-
+reload.begin = function(gamedata, id, cache)
+  -- Set face
+  local r = input.isdown(gamedata, "right")
+  local l = input.isdown(gamedata, "left")
+  if r then
+    gamedata.face[id] = "right"
+  elseif l then
+    gamedata.face[id] = "left"
+  end
+  -- Selection of firing state function should go here
+  local wid = cache.weaponids.rifle
+  local co = coroutine.create(gamedata.weapons.reload[wid])
+  return fire.run(gamedata, id, cache, co, wid)
+end
 
 evade.begin = function(gamedata, id, cache)
   gamedata.visual.drawers[id] = draw_coroutines_creator.evade(cache.animations)

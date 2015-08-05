@@ -77,6 +77,7 @@ fire.run = function(gamedata, id, masterid)
 end
 
 reload.combo = function(gamedata, id, masterid)
+  print("combo")
   local usedammo = gamedata.weapons.usedammo[id] or 0
   if usedammo <= 1 then
     gamedata.weapons.usedammo[id] = nil
