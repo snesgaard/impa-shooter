@@ -85,28 +85,32 @@ local alive = function(gamedata, id, cache)
   coroutine.yield()
 end
 
-local control = function(gamedata, id)
-  local ims = gamedata.visual.images
-  local cache = {}
-  cache.animations = {
-    body = newAnimation(ims[imagepaths.body], 5, 3, 0.05, 0),
-    dudimpact = newAnimation(ims[imagepaths.dudimpact], 15, 9, impactframetime, impactframes),
-    minorimpact = newAnimation(ims[imagepaths.minorimpact], 15, 9, impactframetime, impactframes),
-    majorimpact = newAnimation(ims[imagepaths.majorimpact], 15, 18, impactframetime, impactframes),
-  }
-  local body = gamedata.hitbox[id].body
-  local callback = function(this, other)
-    if other.applydamage ~= nil then
-      cache.damage = other.applydamage(this.id, 0, 0, 1)
+local make_control = function(dmg)
+  dmg = dmg or 1
+  local control = function(gamedata, id)
+    local ims = gamedata.visual.images
+    local cache = {}
+    cache.animations = {
+      body = newAnimation(ims[imagepaths.body], 5, 3, 0.05, 0),
+      dudimpact = newAnimation(ims[imagepaths.dudimpact], 15, 9, impactframetime, impactframes),
+      minorimpact = newAnimation(ims[imagepaths.minorimpact], 15, 9, impactframetime, impactframes),
+      majorimpact = newAnimation(ims[imagepaths.majorimpact], 15, 18, impactframetime, impactframes),
+    }
+    local body = gamedata.hitbox[id].body
+    local callback = function(this, other)
+      if other.applydamage ~= nil then
+        cache.damage = other.applydamage(this.id, 0, 0, dmg)
+      end
     end
+    coolision.setcallback(body, callback)
+    gamedata.visual.drawers[id] = coroutine.create(visual.alive(cache.animations))
+    return alive(gamedata, id, cache)
   end
-  coolision.setcallback(body, callback)
-  gamedata.visual.drawers[id] = coroutine.create(visual.alive(cache.animations))
-  return alive(gamedata, id, cache)
+  return control
 end
 
 local type = "bullet"
-actor.bullet = function(gamedata, id, x, y, speed, seek)
+actor.bullet = function(gamedata, id, x, y, speed, seek, dmg)
   gamedata.actor[id] = type
   local e = newEntity(x, y, w, h)
   e.vx = speed
@@ -117,7 +121,7 @@ actor.bullet = function(gamedata, id, x, y, speed, seek)
 
   if speed > 0 then gamedata.face[id] = "right" else gamedata.face[id] = "left" end
 
-  gamedata.control[id] = coroutine.create(control)
+  gamedata.control[id] = coroutine.create(make_control(dmg))
 
   local body = coolision.newAxisBox(
     id, x - w, y + h, w * 2, h * 2, gamedata.hitboxtypes.allyprojectile,

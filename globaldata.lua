@@ -51,6 +51,10 @@ gamedata = {
     fire = {},
     reload = {},
   },
+  rifle = {
+    multilevel = {},
+    multitimer = {},
+  },
   -- Level related data
   tilemaps = {},
   entity = {},

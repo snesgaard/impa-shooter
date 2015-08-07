@@ -131,6 +131,8 @@ function love.update(dt)
   -- Now hit detection on all registered hitboxes
   local seekers, hailers = coolision.sortcollisiongroups(gamedata.hitbox)
   coolision.docollisiongroups(seekers, hailers)
+  -- Update weapon data
+  rifle.updatemultipliers(gamedata)
   -- Update control state for all actors
   for id, cont in pairs(gamedata.control) do
     coroutine.resume(cont, gamedata, id)
@@ -171,10 +173,11 @@ function love.draw()
   for _, t in ipairs(sorted_drawers) do
     coroutine.resume(t.co, gamedata, t.id)
   end
+  love.graphics.setColor(255, 255, 255)
   -- Reset transforms
   love.graphics.origin()
   -- Introduce normalize screen coordinates for UI drawing
-  love.graphics.scale(gamedata.visual.width, gamedata.visual.width)
+  -- love.graphics.scale(gamedata.visual.width, gamedata.visual.width)
   for id, d in pairs(gamedata.visual.uidrawers) do
     coroutine.resume(d, gamedata, id)
   end

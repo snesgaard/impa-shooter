@@ -2,8 +2,9 @@ actor = actor or {}
 loaders = loaders or {}
 
 local images = {
-  riflebullet = "res/impa/riflebulletui.png"
+
 }
+local radius = 16
 
 loaders.statsui = function(gamedata)
   for _, path in pairs(images) do
@@ -11,18 +12,7 @@ loaders.statsui = function(gamedata)
   end
 end
 
-local radius = 0.02
-local bulletscale = 0.001
-local bulletframe = {
-  w = 50,
-  h = 19,
-}
-
 local drawstats = function(gamedata, id)
-  local riflebullet = newAnimation(
-    gamedata.visual.images[images.riflebullet], bulletframe.w, bulletframe.h,
-    0, 1
-  )
   while true do
     local pid = gamedata.game.playerid
     -- Render health
@@ -55,22 +45,7 @@ local drawstats = function(gamedata, id)
         "fill", radius * 1.5 + offset * (i - 1), radius * 4, radius, 100
       )
     end
-    -- Render ammunition:
-    -- TODO should pick whatever selected weapon
-    local wid = gamedata.weapons.inuse[pid]
-    local maxa = gamedata.weapons.maxammo[wid]
-    local missa = gamedata.weapons.usedammo[wid] or 0
-    local renderammo =  maxa - missa
     love.graphics.setColor(255, 255, 255)
-    for ammo = 1, renderammo do
-      --love.graphics.circle(
-      --  "fill", radius * 1.5 + offset * (ammo - 1), radius * 6.5, radius, 100
-      --)
-      riflebullet:draw(
-        radius * 1.5, radius * 6.5  + offset * (maxa - ammo), 0,
-        bulletscale, bulletscale
-      )
-    end
     coroutine.yield()
   end
 end

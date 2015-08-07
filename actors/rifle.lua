@@ -8,11 +8,30 @@ local reloadtime = 0.5
 local reloadframes = 5
 local reloadframettime = reloadtime / (reloadframes * 2)
 
+--UI defines
+local bulletscale = 0.001
+local bulletframe = {
+  w = 50,
+  h = 19,
+}
+local uipos = {x = 24, y = 104}
+
+--
+local multiplertime = 1.5
+local multiplermax = 3
+local multicolor = {
+  [0] = {0, 0, 0, 0},
+  [1] = {212, 81, 66},
+  [2] = {203, 233, 39},
+  [3] = {190, 28, 164},
+}
+
 local exhaustcoords = {x = 18, y = 1}
 
 local images = {
   riflefire = "res/impa/riflefire.png",
   riflecomboreload = "res/impa/riflecomboreload.png",
+  riflebullet = "res/impa/riflebulletui.png",
 }
 
 loaders.rifle = function(gamedata)
@@ -45,13 +64,16 @@ fire.run = function(gamedata, id, masterid)
   local face = gamedata.face[masterid]
   local sx = 1
   if face == "left" then sx = -1 end
+  local multiplier = gamedata.rifle.multilevel[id] or 0
+  local dmg = math.pow(2, multiplier)
   gamedata.init(
     gamedata, actor.gunexhaust, entity.x + exhaustcoords.x * sx,
     entity.y + exhaustcoords.y, face
   )
   gamedata.init(
     gamedata, actor.bullet, entity.x + exhaustcoords.x * sx,
-    entity.y + exhaustcoords.y, 250 * sx
+    entity.y + exhaustcoords.y, 250 * sx, gamedata.hitboxtypes.enemybody,
+    dmg
   )
   local inittime = gamedata.system.time
   local posttimer = misc.createtimer(inittime, fireframetime * (fireframes - 1))
@@ -77,13 +99,15 @@ fire.run = function(gamedata, id, masterid)
 end
 
 reload.combo = function(gamedata, id, masterid)
-  print("combo")
   local usedammo = gamedata.weapons.usedammo[id] or 0
   if usedammo <= 1 then
     gamedata.weapons.usedammo[id] = nil
   else
     gamedata.weapons.usedammo[id] = usedammo - 1
   end
+  gamedata.rifle.multitimer[id] = multiplertime
+  local multi = gamedata.rifle.multilevel[id] or 0
+  gamedata.rifle.multilevel[id] = math.min(multi + 1, multiplermax)
   local reloadtimer = misc.createtimer(gamedata.system.time, reloadtime)
   local im = gamedata.visual.images[images.riflecomboreload]
   local anime = newAnimation(
@@ -103,8 +127,100 @@ reload.combo = function(gamedata, id, masterid)
 end
 reload.normal = reload.combo -- Should be its own thing
 
+local make_uidraw = function(x, y)
+  local uidraw = function(gamedata, id)
+    while true do
+      local riflebullet = newAnimation(
+        gamedata.visual.images[images.riflebullet], bulletframe.w, bulletframe.h,
+        0, 1
+      )
+      local maxa = gamedata.weapons.maxammo[id]
+      local missa = gamedata.weapons.usedammo[id] or 0
+      local renderammo =  maxa - missa
+      local offset = 16 * 1.5
+      -- Render ammo background
+      local bgoff = 8
+      local ammoheight = offset * 2 + bulletframe.h + bgoff
+      local ammowidth = bulletframe.w + bgoff
+      love.graphics.setColor(0, 0, 50, 100)
+      love.graphics.rectangle(
+        "fill", x - bgoff * 0.5, y - bgoff * 0.5, ammowidth, ammoheight
+      )
+      -- render actual bullets
+      love.graphics.setColor(255, 255, 255)
+      for ammo = 1, renderammo do
+        riflebullet:draw(
+          x, y + offset * (maxa - ammo), 0,
+          1, 1
+        )
+      end
+      -- Render multiplier
+      local radius = 16
+      local timeleft = gamedata.rifle.multitimer[id] or 0
+      local multi = gamedata.rifle.multilevel[id] or 0
+      local cur_color = multicolor[multi]
+      local next_color = multicolor[multi - 1] or {0, 0, 0}
+      local multipos = {
+        x = x + ammowidth * 0.25, y = y + ammoheight * 1.1 + radius
+      }
+      -- Draw mulitpler background and timer
+      timeleft = timeleft / multiplertime
+      local arcstart = math.pi * 1.5
+      local arcend = -math.pi * 0.5
+      love.graphics.setColor(unpack(cur_color))
+      love.graphics.arc(
+        "fill", multipos.x, multipos.y,
+        radius + 4, arcstart, arcend * timeleft + arcstart * (1 - timeleft),
+        100
+      )
+      if multi > 0 then
+        love.graphics.setColor(unpack(next_color))
+        love.graphics.arc(
+          "fill", multipos.x, multipos.y,
+          radius + 4, arcend * timeleft + arcstart * (1 - timeleft) + math.pi * 2, arcstart,
+          100
+        )
+      end
+      love.graphics.setColor(0, 0, 50, 255)
+      love.graphics.circle(
+        "fill", multipos.x, multipos.y, radius, 100
+      )
+      if multi == 0 then
+        love.graphics.setColor(255, 255, 255)
+      else
+        love.graphics.setColor(unpack(cur_color))
+      end
+      love.graphics.print(
+        multi, multipos.x - ammowidth * 0.125 - 1, multipos.y - 13, 0, 2
+      )
+      coroutine.yield()
+    end
+  end
+  return uidraw
+end
+
 actors.rifle = function(gamedata, id)
   gamedata.weapons.maxammo[id] = 3
   gamedata.weapons.fire[id] = fire.run
   gamedata.weapons.reload[id] = reload.normal
+  gamedata.visual.uidrawers[id] = coroutine.create(make_uidraw(uipos.x, uipos.y))
+end
+
+rifle = {}
+rifle.updatemultipliers = function(gamedata, id)
+  for id, multiplier in pairs(gamedata.rifle.multilevel) do
+    local timer = gamedata.rifle.multitimer[id] or 0
+    timer = timer - gamedata.system.dt
+    if timer < 0 then
+
+      if multiplier < 2 then
+        gamedata.rifle.multilevel[id] = nil
+        timer = 0
+      else
+        gamedata.rifle.multilevel[id] = multiplier - 1
+        timer = multiplertime
+      end
+    end
+    gamedata.rifle.multitimer[id] = timer
+  end
 end
