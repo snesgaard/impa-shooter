@@ -1,3 +1,5 @@
+local gfx = love.graphics
+
 actor = actor or {}
 loaders = loaders or {}
 
@@ -15,12 +17,31 @@ local imagepaths = {
   dudimpact = "res/bulletimpact.png",
   minorimpact = "res/minorbulletimpact.png",
   majorimpact = "res/majorbulletimpact.png",
+  btrailim = "res/btrailparticle.png",
 }
 
+local particles
+
 loaders.bullet = function(gamedata)
+  local ims = gamedata.visual.images
   for _, path in pairs(imagepaths) do
     gamedata.visual.images[path] = love.graphics.newImage(path)
   end
+  local speed = 0
+  local lifetime = 0.1
+  local btrail = gfx.newParticleSystem(ims[imagepaths.btrailim], 100)
+  btrail:setSpeed(speed, 3 * speed)
+  btrail:setEmissionRate(30)
+  btrail:setSizes(3.0, 5.0, 0)
+  btrail:setAreaSpread("normal", 0, 1)
+  btrail:setInsertMode("random")
+  btrail:setSizeVariation(1)
+  btrail:setParticleLifetime(lifetime)
+  btrail:setDirection(math.pi / 2)
+  --btrail:setColors(255, 255, 255, 100, 255, 255, 255, 255, 255, 255, 255, 0)
+  btrail:setLinearAcceleration(0, 0, 0, 0)
+--  btrail:setSpeed(0, 0)
+  gamedata.visual.particles.btrail = btrail
 end
 
 local cleanup = function(gamedata, id)
@@ -39,7 +60,16 @@ visual.alive = function(animations)
     local anime = animations.body
     local entity = gamedata.entity[id]
     local face = gamedata.face[id]
+    local color = {190, 28, 164}
+    --gfx.setColor(unpack(color))
     misc.draw_sprite_entity(anime, entity, face)
+    local btrail = gamedata.visual.particles.btrail
+    btrail:setPosition(entity.x + 5, entity.y)
+    btrail:update(gamedata.system.dt)
+    local r, g, b = unpack(color)
+    btrail:setColors(r, g, b, 150)
+    gfx.draw(btrail)
+    gfx.setColor(255, 255, 255)
     coroutine.yield()
     anime:update(gamedata.system.dt)
     return co(gamedata, id)

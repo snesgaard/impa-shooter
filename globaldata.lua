@@ -25,6 +25,7 @@ gamedata = {
     images = {}, -- Contains all loaded images, indexed by path
     meshes = {},
     shaders = {},
+    particles = {},
     width = 0,
     height = 0,
     aspect = 0,
