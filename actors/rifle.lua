@@ -1,3 +1,6 @@
+require "bullet"
+require "math"
+
 actors = actors or {}
 loaders = loaders or {}
 
@@ -17,7 +20,7 @@ local bulletframe = {
 local uipos = {x = 24, y = 104}
 
 --
-local multiplertime = 1.5
+local multiplertime = 1.0
 local multiplermax = 3
 local multicolor = {
   [0] = {0, 0, 0, 0},
@@ -32,6 +35,7 @@ local images = {
   riflefire = "res/impa/riflefire.png",
   riflecomboreload = "res/impa/riflecomboreload.png",
   riflebullet = "res/impa/riflebulletui.png",
+  btrailim = "res/btrailparticle.png",
 }
 
 loaders.rifle = function(gamedata)
@@ -71,9 +75,8 @@ fire.run = function(gamedata, id, masterid)
     entity.y + exhaustcoords.y, face
   )
   gamedata.init(
-    gamedata, actor.bullet, entity.x + exhaustcoords.x * sx,
-    entity.y + exhaustcoords.y, 250 * sx, gamedata.hitboxtypes.enemybody,
-    dmg
+    gamedata, actor.riflebullet, entity.x + exhaustcoords.x * sx,
+    entity.y + exhaustcoords.y, multiplier, face
   )
   local inittime = gamedata.system.time
   local posttimer = misc.createtimer(inittime, fireframetime * (fireframes - 1))
@@ -204,6 +207,53 @@ actors.rifle = function(gamedata, id)
   gamedata.weapons.fire[id] = fire.run
   gamedata.weapons.reload[id] = reload.normal
   gamedata.visual.uidrawers[id] = coroutine.create(make_uidraw(uipos.x, uipos.y))
+end
+
+local riflebullet_draw = function(basedraw, particles)
+  local co = function(gamedata, id)
+    while true do
+      coroutine.resume(basedraw, gamedata, id)
+      if particles then
+        local entity = gamedata.entity[id]
+        local o = 5
+        if entity.vx < 0 then o = -o end
+        particles:setPosition(entity.x + o, entity.y)
+        particles:update(gamedata.system.dt)
+        love.graphics.draw(particles)
+      end
+      coroutine.yield()
+    end
+  end
+  return co
+end
+
+actor.riflebullet = function(gamedata, id, x, y, multi, face)
+  local dmg = math.pow(2, multi)
+  local speed = 250
+  if face == "left" then speed = -speed end
+  local color = multicolor[multi]
+  actor.bullet(gamedata, id, x, y, speed, gamedata.hitboxtypes.enemybody, dmg)
+  local basecontrol = gamedata.control[id]
+  local basedraw = gamedata.visual.drawers[id]
+  local speed = 0
+  local lifetime = 0.1
+  local ims = gamedata.visual.images
+  local particles
+  if multi > 0 then
+    particles = love.graphics.newParticleSystem(ims[images.btrailim], 100)
+    particles:setSpeed(speed, 3 * speed)
+    particles:setEmissionRate(30)
+    particles:setSizes(3.0, 5.0, 0)
+    particles:setAreaSpread("normal", 0, 1)
+    particles:setInsertMode("random")
+    particles:setSizeVariation(1)
+    particles:setParticleLifetime(lifetime)
+    particles:setDirection(math.pi / 2)
+    particles:setLinearAcceleration(0, 0, 0, 0)
+    local r, g, b = unpack(color)
+    particles:setColors(r, g, b, 150)
+  end
+  gamedata.visual.drawers[id] = coroutine.create(riflebullet_draw(basedraw, particles))
 end
 
 rifle = {}

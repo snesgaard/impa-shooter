@@ -21,6 +21,7 @@ local jumpspeed = 200
 local evadeduration = 0.1
 local evadedistance = 40
 local evadespeed = evadedistance / evadeduration
+local evadeexitspeed = 100
 local evadesampling = 0.025
 local fireframetime = 0.05
 local fireframes = 4
@@ -337,7 +338,7 @@ evade.run = function(gamedata, id, cache, vx, vy)
     e.vy = vy
     coroutine.yield()
   end
-  e.vy = 0
+  if e.vy > 0 then e.vy = evadeexitspeed else e.vy = 0 end
   e.vx = 0
   return normal.begin(gamedata, id, cache)
 end

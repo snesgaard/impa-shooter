@@ -45,6 +45,10 @@ gamedata = {
     playerid,
   },
   keys = {},
+  bullet = {
+    lifetime = {},
+    damagedealt = {},
+  },
   weapons = {
     inuse = {},
     maxammo = {},
