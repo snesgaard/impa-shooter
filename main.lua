@@ -87,7 +87,7 @@ function coroutine.resume(...)
 	return state,result
 end
 
-local levelpath = "res/rainylevel"
+local levelpath = "res/rainylevel.lua"
 local levelid
 local leveldraw
 function love.load()
