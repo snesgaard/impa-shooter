@@ -91,10 +91,13 @@ local levelpath = "res/rainylevel.lua"
 local levelid
 local leveldraw
 function love.load()
+  -- Some global names
+  gfx = love.graphics
   -- Set filtering to nearest neighor
   local filter = "nearest"
+  local s = 6
   love.graphics.setDefaultFilter(filter, filter, 0)
-  gamedata.visual.scale = 2
+  gamedata.visual.scale = s
   gamedata.visual.width = love.graphics.getWidth()
   gamedata.visual.height = love.graphics.getHeight()
   gamedata.visual.aspect = gamedata.visual.width / gamedata.visual.height
@@ -115,6 +118,17 @@ function love.load()
   gamedata.game.playerid = gamedata.init(gamedata, actor.impa, 200, -100)
   gamedata.init(gamedata, actor.statsui)
   gamedata.init(gamedata, actor.box, 300, -100)
+  -- Canvas
+  basecanvas = gfx.newCanvas(
+    gamedata.visual.width, gamedata.visual.height
+  )
+  basecanvas:setFilter(filter, filter)
+  pixeltiletex = gfx.newImage("res/pixeltile.png")
+  pixeltiletex:setWrap('repeat', 'repeat')
+  pixelquad = love.graphics.newQuad(
+      0, 0, gamedata.visual.width, gamedata.visual.height,
+      pixeltiletex:getWidth(), pixeltiletex:getHeight()
+    )
 end
 
 function love.update(dt)
@@ -145,7 +159,10 @@ function love.update(dt)
 end
 
 function love.draw()
-  love.graphics.scale(gamedata.visual.scale)
+  --love.graphics.scale(gamedata.visual.scale)
+  basecanvas:clear()
+  gfx.setCanvas(basecanvas)
+  gfx.setColor(255, 255, 255)
   -- Setup camera translation
   local tmap = gamedata.tilemaps[gamedata.game.activelevel]
   local pentity = gamedata.entity[gamedata.game.playerid]
@@ -174,8 +191,11 @@ function love.draw()
     coroutine.resume(t.co, gamedata, t.id)
   end
   love.graphics.setColor(255, 255, 255)
+  gfx.setCanvas()
   -- Reset transforms
   love.graphics.origin()
+  gfx.draw(basecanvas, 0, 0, 0, gamedata.visual.scale)
+  gfx.draw(pixeltiletex, pixelquad)
   -- Introduce normalize screen coordinates for UI drawing
   -- love.graphics.scale(gamedata.visual.width, gamedata.visual.width)
   for id, d in pairs(gamedata.visual.uidrawers) do
