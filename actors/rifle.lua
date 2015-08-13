@@ -17,7 +17,7 @@ local bulletframe = {
   w = 50,
   h = 19,
 }
-local uipos = {x = 24, y = 104}
+local uipos = {x = 6, y = 25}
 
 --
 local multiplertime = 1.0
@@ -140,11 +140,12 @@ local make_uidraw = function(x, y)
       local maxa = gamedata.weapons.maxammo[id]
       local missa = gamedata.weapons.usedammo[id] or 0
       local renderammo =  maxa - missa
-      local offset = 16 * 1.5
+      local scale = 0.2
+      local offset = 16 * 2.0 * scale
       -- Render ammo background
       local bgoff = 8
-      local ammoheight = offset * 2 + bulletframe.h + bgoff
-      local ammowidth = bulletframe.w + bgoff
+      local ammoheight = offset * 2 + bulletframe.h * scale + bgoff
+      local ammowidth = bulletframe.w * scale + bgoff
       love.graphics.setColor(0, 0, 50, 100)
       love.graphics.rectangle(
         "fill", x - bgoff * 0.5, y - bgoff * 0.5, ammowidth, ammoheight
@@ -154,17 +155,17 @@ local make_uidraw = function(x, y)
       for ammo = 1, renderammo do
         riflebullet:draw(
           x, y + offset * (maxa - ammo), 0,
-          1, 1
+          scale, scale
         )
       end
       -- Render multiplier
-      local radius = 16
+      local radius = 7
       local timeleft = gamedata.rifle.multitimer[id] or 0
       local multi = gamedata.rifle.multilevel[id] or 0
       local cur_color = multicolor[multi]
       local next_color = multicolor[multi - 1] or {0, 0, 0}
       local multipos = {
-        x = x + ammowidth * 0.25, y = y + ammoheight * 1.1 + radius
+        x = x + 5, y = y + 25 + radius
       }
       -- Draw mulitpler background and timer
       timeleft = timeleft / multiplertime
@@ -173,14 +174,14 @@ local make_uidraw = function(x, y)
       love.graphics.setColor(unpack(cur_color))
       love.graphics.arc(
         "fill", multipos.x, multipos.y,
-        radius + 4, arcstart, arcend * timeleft + arcstart * (1 - timeleft),
+        radius + 3, arcstart, arcend * timeleft + arcstart * (1 - timeleft),
         100
       )
       if multi > 0 then
         love.graphics.setColor(unpack(next_color))
         love.graphics.arc(
           "fill", multipos.x, multipos.y,
-          radius + 4, arcend * timeleft + arcstart * (1 - timeleft) + math.pi * 2, arcstart,
+          radius + 3, arcend * timeleft + arcstart * (1 - timeleft) + math.pi * 2, arcstart,
           100
         )
       end
@@ -194,7 +195,7 @@ local make_uidraw = function(x, y)
         love.graphics.setColor(unpack(cur_color))
       end
       love.graphics.print(
-        multi, multipos.x - ammowidth * 0.125 - 1, multipos.y - 13, 0, 2
+        multi, multipos.x - ammowidth * 0.125 - 2, multipos.y - 7, 0, 1
       )
       coroutine.yield()
     end

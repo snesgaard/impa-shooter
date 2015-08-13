@@ -2,9 +2,10 @@ actor = actor or {}
 loaders = loaders or {}
 
 local images = {
-
+  hporb = "res/healthgem.png",
+  stamorb = "res/stamgem.png",
 }
-local radius = 16
+local radius = 3
 
 loaders.statsui = function(gamedata)
   for _, path in pairs(images) do
@@ -19,31 +20,36 @@ local drawstats = function(gamedata, id)
     local renderhp = 0
     --local maxhp = gamedata.maxhealth[pid]
     local hp = gamedata.health[pid]
+    local hpim = gamedata.visual.images[images.hporb]
     if hp then
       renderhp = hp.health - hp.damage
     else
       renderhp = gamedata.maxhealth[pid]
     end
-    love.graphics.setColor(255, 0, 0)
-    local offset = radius * 2.5
+    --love.graphics.setColor(255, 75, 75)
+    local offset = 10
     for i = 1, renderhp do
-      love.graphics.circle(
-        "fill", radius * 1.5 + offset * (i - 1), radius * 1.5, radius, 100
+      love.graphics.draw(
+        hpim, radius * 2.0 + offset * (i - 1) - 4, radius * 2.0 - 4
       )
     end
     -- Render stamina
     local renderstam = 0
     local stam = gamedata.stamina[pid]
+    local stamim = gamedata.visual.images[images.stamorb]
     if stam then
       renderstam = stam.stamina - stam.damage
     else
       renderstam = gamedata.maxstamina[pid]
     end
-    love.graphics.setColor(0, 255, 0)
+    --love.graphics.setColor(75, 255, 75)
     for i = 1,renderstam do
-      love.graphics.circle(
-        "fill", radius * 1.5 + offset * (i - 1), radius * 4, radius, 100
+      love.graphics.draw(
+        stamim, radius * 2.0 + offset * (i - 1) - 4, radius * 5.0 - 3
       )
+--      love.graphics.circle(
+  --      "fill", radius * 2.0 + offset * (i - 1), radius * 5, radius, 100
+    --  )
     end
     love.graphics.setColor(255, 255, 255)
     coroutine.yield()
