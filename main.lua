@@ -11,6 +11,7 @@ local sti = require ("modules/sti")
 require ("actors/box")
 require ("actors/impa")
 require "statsui"
+require ("modules/functional")
 
 function loadanimation(path, ...)
   local im = love.graphics.newImage(path)
@@ -118,6 +119,7 @@ function love.load()
   gamedata.game.playerid = gamedata.init(gamedata, actor.impa, 200, -100)
   gamedata.init(gamedata, actor.statsui)
   gamedata.init(gamedata, actor.box, 300, -100)
+  gamedata.init(gamedata, actor.box, 250, -100)
   -- Canvas
   basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height
@@ -147,6 +149,16 @@ function love.update(dt)
   coolision.docollisiongroups(seekers, hailers)
   -- Update weapon data
   rifle.updatemultipliers(gamedata)
+  -- Update stamina: HACK Rate is not real
+  local rate = 1.0
+  for id, usedstam in pairs(gamedata.usedstamina) do
+    local nextstam = usedstam - rate * gamedata.system.dt
+    if nextstam < 0 then
+      gamedata.usedstamina[id] = nil
+    else
+      gamedata.usedstamina[id] = nextstam
+    end
+  end
   -- Update control state for all actors
   for id, cont in pairs(gamedata.control) do
     coroutine.resume(cont, gamedata, id)
@@ -199,6 +211,12 @@ function love.draw()
     coroutine.resume(d, gamedata, id)
   end
   gfx.setCanvas()
+  love.graphics.setColor(255, 255, 255)
   gfx.draw(basecanvas, 0, 0, 0, gamedata.visual.scale)
-  gfx.draw(pixeltiletex, pixelquad)
+  local p = gamedata.system.pressed['w'] or 0
+  local r = gamedata.system.released['w'] or 0
+  if p  <=  r then
+    gfx.setColor(255, 255, 255, 255)
+    gfx.draw(pixeltiletex, pixelquad)
+  end
 end

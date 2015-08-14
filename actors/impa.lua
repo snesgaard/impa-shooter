@@ -196,7 +196,7 @@ normal.run = function(gamedata, id, cache)
     e.vx = 0
   end
   coroutine.yield()
-  if ev then
+  if ev and evade.ready(gamedata, id) then
     input.latch(gamedata, evadekey)
     return evade.begin(gamedata, id, cache)
   elseif a then
@@ -269,7 +269,7 @@ fire.run = function(gamedata, id, cache, co, wid)
   coroutine.resume(co, gamedata, wid, id)
   coroutine.yield()
   local ev = input.ispressed(gamedata, evadekey)
-  if ev then
+  if ev and evade.ready(gamedata, id) then
     input.latch(gamedata, evadekey)
     return evade.begin(gamedata, id, cache)
   elseif coroutine.status(co) == "dead" then
@@ -328,6 +328,9 @@ evade.begin = function(gamedata, id, cache)
     vx = 0
     vy = 0
   end
+  -- Descrease stamina
+  local used = gamedata.usedstamina[id] or 0
+  gamedata.usedstamina[id] = math.ceil(used) + 1
   return evade.run(gamedata, id, cache, vx, vy)
 end
 evade.run = function(gamedata, id, cache, vx, vy)
@@ -341,6 +344,11 @@ evade.run = function(gamedata, id, cache, vx, vy)
   if e.vy > 0 then e.vy = evadeexitspeed else e.vy = 0 end
   e.vx = 0
   return normal.begin(gamedata, id, cache)
+end
+evade.ready = function(gamedata, id)
+  local used = gamedata.usedstamina[id] or 0
+  local max = gamedata.maxstamina[id] or 0
+  return math.ceil(used) < max
 end
 
 local create_recursive_control = function(cache)

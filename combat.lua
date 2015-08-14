@@ -18,4 +18,16 @@ combat.setstat = function(current, max)
   return math.min(max, current)
 end
 
+combat.singledamagecall = function(dmgfunc)
+  local cache = {}
+  local checkcache = function(this, other)
+    if not cache[other] then return this, other end
+  end
+  local insertcache = function(this, other)
+    cache[other] = love.timer.getTime()
+    return this, other
+  end
+  return functional.monadcompose(checkcache, dmgfunc, insertcache)
+end
+
 return combat

@@ -11,13 +11,17 @@ local reloadtime = 0.5
 local reloadframes = 5
 local reloadframettime = reloadtime / (reloadframes * 2)
 
+local fullreloadtime = 1.5
+local fullreloadframes = reloadframes
+local fullreloadft = fullreloadtime / (fullreloadframes * 2)
+
 --UI defines
 local bulletscale = 0.001
 local bulletframe = {
   w = 50,
   h = 19,
 }
-local uipos = {x = 6, y = 25}
+local uipos = {x = 6, y = 30}
 
 --
 local multiplertime = 1.0
@@ -34,6 +38,7 @@ local exhaustcoords = {x = 18, y = 1}
 local images = {
   riflefire = "res/impa/riflefire.png",
   riflecomboreload = "res/impa/riflecomboreload.png",
+  riflereload = "res/impa/riflecomboreload.png",
   riflebullet = "res/impa/riflebulletui.png",
   btrailim = "res/btrailparticle.png",
 }
@@ -128,7 +133,17 @@ reload.combo = function(gamedata, id, masterid)
   end
   if nextrun then return nextrun(gamedata, id, masterid) end
 end
-reload.normal = reload.combo -- Should be its own thing
+reload.normal = function(gamedata, id, masterid)
+  if not gamedata.weapons.usedammo[id] then return end
+  gamedata.weapons.usedammo[id] = nil
+  local im = gamedata.visual.images[images.riflereload]
+  local anime = newAnimation(im, 48, 48, fullreloadft, fullreloadframes)
+  gamedata.visual.drawers[masterid] = misc.createbouncedrawer(anime)
+  local timer = misc.createtimer(gamedata.system.time, fullreloadtime)
+  while timer(gamedata.system.time) do
+    coroutine.yield()
+  end
+end
 
 local make_uidraw = function(x, y)
   local uidraw = function(gamedata, id)
@@ -253,6 +268,17 @@ actor.riflebullet = function(gamedata, id, x, y, multi, face)
     particles:setLinearAcceleration(0, 0, 0, 0)
     local r, g, b = unpack(color)
     particles:setColors(r, g, b, 150)
+  end
+  -- When max level is reached, change callback to be more penetrating
+  if multi == multiplermax then
+    local dmgfunc = function(this, other)
+      if other.applydamage then
+        other.applydamage(this.id, 0, 0, dmg)
+      end
+      return this, other
+    end
+    local callback = combat.singledamagecall(dmgfunc)
+    coolision.setcallback(gamedata.hitbox[id].body, callback)
   end
   gamedata.visual.drawers[id] = coroutine.create(riflebullet_draw(basedraw, particles))
 end

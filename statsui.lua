@@ -42,14 +42,22 @@ local drawstats = function(gamedata, id)
     else
       renderstam = gamedata.maxstamina[pid]
     end
+    local usedstam = gamedata.usedstamina[pid] or 0
+    local maxstam = gamedata.maxstamina[pid] or 0
+    local renderstam = maxstam - math.ceil(usedstam)
     --love.graphics.setColor(75, 255, 75)
     for i = 1,renderstam do
       love.graphics.draw(
         stamim, radius * 2.0 + offset * (i - 1) - 4, radius * 5.0 - 3
       )
---      love.graphics.circle(
-  --      "fill", radius * 2.0 + offset * (i - 1), radius * 5, radius, 100
-    --  )
+    end
+    -- Render missing stamina
+    if usedstam > 0 then
+      local nextstam = 1.0 - (math.ceil(usedstam) - usedstam)
+      local mw = 20
+      local mh = 2
+      love.graphics.setColor(75, 255, 75)
+      gfx.rectangle("fill", 3, 22, mw * nextstam, mh)
     end
     love.graphics.setColor(255, 255, 255)
     coroutine.yield()
