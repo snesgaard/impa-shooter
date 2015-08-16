@@ -6,6 +6,7 @@ gamedata = {
   stamina = {},
   maxhealth = {},
   maxstamina = {},
+  usedstamina = {},
   staminaregen = {},
   soak = {},
   reduce = {},

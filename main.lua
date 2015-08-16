@@ -11,6 +11,7 @@ local sti = require ("modules/sti")
 require ("actors/box")
 require ("actors/impa")
 require "statsui"
+require ("modules/functional")
 
 function loadanimation(path, ...)
   local im = love.graphics.newImage(path)
@@ -91,10 +92,13 @@ local levelpath = "res/rainylevel.lua"
 local levelid
 local leveldraw
 function love.load()
+  -- Some global names
+  gfx = love.graphics
   -- Set filtering to nearest neighor
   local filter = "nearest"
+  local s = 6
   love.graphics.setDefaultFilter(filter, filter, 0)
-  gamedata.visual.scale = 2
+  gamedata.visual.scale = s
   gamedata.visual.width = love.graphics.getWidth()
   gamedata.visual.height = love.graphics.getHeight()
   gamedata.visual.aspect = gamedata.visual.width / gamedata.visual.height
@@ -115,6 +119,18 @@ function love.load()
   gamedata.game.playerid = gamedata.init(gamedata, actor.impa, 200, -100)
   gamedata.init(gamedata, actor.statsui)
   gamedata.init(gamedata, actor.box, 300, -100)
+  gamedata.init(gamedata, actor.box, 250, -100)
+  -- Canvas
+  basecanvas = gfx.newCanvas(
+    gamedata.visual.width, gamedata.visual.height
+  )
+  basecanvas:setFilter(filter, filter)
+  pixeltiletex = gfx.newImage("res/pixeltile.png")
+  pixeltiletex:setWrap('repeat', 'repeat')
+  pixelquad = love.graphics.newQuad(
+      0, 0, gamedata.visual.width, gamedata.visual.height,
+      pixeltiletex:getWidth(), pixeltiletex:getHeight()
+    )
 end
 
 function love.update(dt)
@@ -133,6 +149,16 @@ function love.update(dt)
   coolision.docollisiongroups(seekers, hailers)
   -- Update weapon data
   rifle.updatemultipliers(gamedata)
+  -- Update stamina: HACK Rate is not real
+  local rate = 1.0
+  for id, usedstam in pairs(gamedata.usedstamina) do
+    local nextstam = usedstam - rate * gamedata.system.dt
+    if nextstam < 0 then
+      gamedata.usedstamina[id] = nil
+    else
+      gamedata.usedstamina[id] = nextstam
+    end
+  end
   -- Update control state for all actors
   for id, cont in pairs(gamedata.control) do
     coroutine.resume(cont, gamedata, id)
@@ -145,7 +171,10 @@ function love.update(dt)
 end
 
 function love.draw()
-  love.graphics.scale(gamedata.visual.scale)
+  --love.graphics.scale(gamedata.visual.scale)
+  basecanvas:clear()
+  gfx.setCanvas(basecanvas)
+  gfx.setColor(255, 255, 255)
   -- Setup camera translation
   local tmap = gamedata.tilemaps[gamedata.game.activelevel]
   local pentity = gamedata.entity[gamedata.game.playerid]
@@ -180,5 +209,14 @@ function love.draw()
   -- love.graphics.scale(gamedata.visual.width, gamedata.visual.width)
   for id, d in pairs(gamedata.visual.uidrawers) do
     coroutine.resume(d, gamedata, id)
+  end
+  gfx.setCanvas()
+  love.graphics.setColor(255, 255, 255)
+  gfx.draw(basecanvas, 0, 0, 0, gamedata.visual.scale)
+  local p = gamedata.system.pressed['w'] or 0
+  local r = gamedata.system.released['w'] or 0
+  if p  <=  r then
+    gfx.setColor(255, 255, 255, 255)
+    gfx.draw(pixeltiletex, pixelquad)
   end
 end

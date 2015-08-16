@@ -11,13 +11,17 @@ local reloadtime = 0.5
 local reloadframes = 5
 local reloadframettime = reloadtime / (reloadframes * 2)
 
+local fullreloadtime = 1.5
+local fullreloadframes = reloadframes
+local fullreloadft = fullreloadtime / (fullreloadframes * 2)
+
 --UI defines
 local bulletscale = 0.001
 local bulletframe = {
   w = 50,
   h = 19,
 }
-local uipos = {x = 24, y = 104}
+local uipos = {x = 6, y = 30}
 
 --
 local multiplertime = 1.0
@@ -34,6 +38,7 @@ local exhaustcoords = {x = 18, y = 1}
 local images = {
   riflefire = "res/impa/riflefire.png",
   riflecomboreload = "res/impa/riflecomboreload.png",
+  riflereload = "res/impa/riflecomboreload.png",
   riflebullet = "res/impa/riflebulletui.png",
   btrailim = "res/btrailparticle.png",
 }
@@ -128,7 +133,17 @@ reload.combo = function(gamedata, id, masterid)
   end
   if nextrun then return nextrun(gamedata, id, masterid) end
 end
-reload.normal = reload.combo -- Should be its own thing
+reload.normal = function(gamedata, id, masterid)
+  if not gamedata.weapons.usedammo[id] then return end
+  gamedata.weapons.usedammo[id] = nil
+  local im = gamedata.visual.images[images.riflereload]
+  local anime = newAnimation(im, 48, 48, fullreloadft, fullreloadframes)
+  gamedata.visual.drawers[masterid] = misc.createbouncedrawer(anime)
+  local timer = misc.createtimer(gamedata.system.time, fullreloadtime)
+  while timer(gamedata.system.time) do
+    coroutine.yield()
+  end
+end
 
 local make_uidraw = function(x, y)
   local uidraw = function(gamedata, id)
@@ -140,11 +155,12 @@ local make_uidraw = function(x, y)
       local maxa = gamedata.weapons.maxammo[id]
       local missa = gamedata.weapons.usedammo[id] or 0
       local renderammo =  maxa - missa
-      local offset = 16 * 1.5
+      local scale = 0.2
+      local offset = 16 * 2.0 * scale
       -- Render ammo background
       local bgoff = 8
-      local ammoheight = offset * 2 + bulletframe.h + bgoff
-      local ammowidth = bulletframe.w + bgoff
+      local ammoheight = offset * 2 + bulletframe.h * scale + bgoff
+      local ammowidth = bulletframe.w * scale + bgoff
       love.graphics.setColor(0, 0, 50, 100)
       love.graphics.rectangle(
         "fill", x - bgoff * 0.5, y - bgoff * 0.5, ammowidth, ammoheight
@@ -154,17 +170,17 @@ local make_uidraw = function(x, y)
       for ammo = 1, renderammo do
         riflebullet:draw(
           x, y + offset * (maxa - ammo), 0,
-          1, 1
+          scale, scale
         )
       end
       -- Render multiplier
-      local radius = 16
+      local radius = 7
       local timeleft = gamedata.rifle.multitimer[id] or 0
       local multi = gamedata.rifle.multilevel[id] or 0
       local cur_color = multicolor[multi]
       local next_color = multicolor[multi - 1] or {0, 0, 0}
       local multipos = {
-        x = x + ammowidth * 0.25, y = y + ammoheight * 1.1 + radius
+        x = x + 5, y = y + 25 + radius
       }
       -- Draw mulitpler background and timer
       timeleft = timeleft / multiplertime
@@ -173,14 +189,14 @@ local make_uidraw = function(x, y)
       love.graphics.setColor(unpack(cur_color))
       love.graphics.arc(
         "fill", multipos.x, multipos.y,
-        radius + 4, arcstart, arcend * timeleft + arcstart * (1 - timeleft),
+        radius + 3, arcstart, arcend * timeleft + arcstart * (1 - timeleft),
         100
       )
       if multi > 0 then
         love.graphics.setColor(unpack(next_color))
         love.graphics.arc(
           "fill", multipos.x, multipos.y,
-          radius + 4, arcend * timeleft + arcstart * (1 - timeleft) + math.pi * 2, arcstart,
+          radius + 3, arcend * timeleft + arcstart * (1 - timeleft) + math.pi * 2, arcstart,
           100
         )
       end
@@ -194,7 +210,7 @@ local make_uidraw = function(x, y)
         love.graphics.setColor(unpack(cur_color))
       end
       love.graphics.print(
-        multi, multipos.x - ammowidth * 0.125 - 1, multipos.y - 13, 0, 2
+        multi, multipos.x - ammowidth * 0.125 - 2, multipos.y - 7, 0, 1
       )
       coroutine.yield()
     end
@@ -252,6 +268,17 @@ actor.riflebullet = function(gamedata, id, x, y, multi, face)
     particles:setLinearAcceleration(0, 0, 0, 0)
     local r, g, b = unpack(color)
     particles:setColors(r, g, b, 150)
+  end
+  -- When max level is reached, change callback to be more penetrating
+  if multi == multiplermax then
+    local dmgfunc = function(this, other)
+      if other.applydamage then
+        other.applydamage(this.id, 0, 0, dmg)
+      end
+      return this, other
+    end
+    local callback = combat.singledamagecall(dmgfunc)
+    coolision.setcallback(gamedata.hitbox[id].body, callback)
   end
   gamedata.visual.drawers[id] = coroutine.create(riflebullet_draw(basedraw, particles))
 end
