@@ -58,9 +58,17 @@ visual.alive = function(animations)
     gfx.setColor(255, 255, 255)
     coroutine.yield()
     anime:update(gamedata.system.dt)
-    if gamedata.bullet.damagedealt[id] then
-      local dud = visual.dudimpact(animations)
-      return dud(gamedata, id)
+    local dmg = gamedata.bullet.damagedealt[id]
+    if dmg then
+      local impco
+      if dmg > 1 then
+        impco = visual.majorimpact(animations)
+      elseif dmg == 1 then
+        impco = visual.minorimpact(animations)
+      else
+        impco = visual.dudimpact(animations)
+      end
+      return impco(gamedata, id)
     else
       return co(gamedata, id)
     end
@@ -72,6 +80,34 @@ visual.dudimpact = function(animations)
   local co
   co = function(gamedata, id)
     local anime = animations.dudimpact
+    local entity = gamedata.entity[id]
+    local face = gamedata.face[id]
+    misc.draw_sprite_entity(anime, entity, face)
+    coroutine.yield()
+    anime:update(gamedata.system.dt)
+    return co(gamedata, id)
+  end
+  return co
+end
+
+visual.minorimpact = function(animations)
+  local co
+  co = function(gamedata, id)
+    local anime = animations.minorimpact
+    local entity = gamedata.entity[id]
+    local face = gamedata.face[id]
+    misc.draw_sprite_entity(anime, entity, face)
+    coroutine.yield()
+    anime:update(gamedata.system.dt)
+    return co(gamedata, id)
+  end
+  return co
+end
+
+visual.majorimpact = function(animations)
+  local co
+  co = function(gamedata, id)
+    local anime = animations.majorimpact
     local entity = gamedata.entity[id]
     local face = gamedata.face[id]
     misc.draw_sprite_entity(anime, entity, face)
