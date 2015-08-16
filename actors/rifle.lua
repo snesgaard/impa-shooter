@@ -244,7 +244,7 @@ local riflebullet_draw = function(basedraw, particles)
 end
 
 actor.riflebullet = function(gamedata, id, x, y, multi, face)
-  local dmg = math.pow(2, multi)
+  local dmg = 1 + multi--math.pow(2, multi)
   local speed = 250
   if face == "left" then speed = -speed end
   local color = multicolor[multi]
