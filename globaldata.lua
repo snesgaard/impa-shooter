@@ -15,6 +15,7 @@ gamedata = {
   -- Control and hitbox related data
   control = {},
   hitbox = {},
+  hitboxsync = {},
   hitboxtypes = {},
   -- Graphical data
   visual = {

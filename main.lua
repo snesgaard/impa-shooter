@@ -10,6 +10,7 @@ local misc = require ("modules/misc")
 local sti = require ("modules/sti")
 require ("actors/box")
 require ("actors/impa")
+require ("actors/mobolee")
 require "statsui"
 require ("modules/functional")
 
@@ -115,11 +116,13 @@ function love.load()
   loaders.gunexhaust(gamedata)
   loaders.bullet(gamedata)
   loaders.statsui(gamedata)
+  loaders.mobolee(gamedata)
   -- Create actors and collect ids
   gamedata.game.playerid = gamedata.init(gamedata, actor.impa, 200, -100)
   gamedata.init(gamedata, actor.statsui)
   gamedata.init(gamedata, actor.box, 300, -100)
   gamedata.init(gamedata, actor.box, 250, -100)
+  gamedata.init(gamedata, actor.mobolee, 400, -100)
   -- Canvas
   basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height
@@ -143,6 +146,19 @@ function love.update(dt)
   local tmap = gamedata.tilemaps[gamedata.game.activelevel]
   for _, e in pairs(gamedata.entity) do
     mapAdvanceEntity(tmap, "game", e, dt)
+  end
+  -- Sync all hitboxes to entities, if possible
+  for id, synctable in pairs(gamedata.hitboxsync) do
+    -- Assume that entity is set, otherwise provoke an error
+    local entity = gamedata.entity[id]
+    local face = gamedata.face[id]
+    local s
+    if face == "right" then s = 1 else s = -1 end
+    for boxid, syncoff in pairs(synctable) do
+      local box = gamedata.hitbox[id][boxid]
+      box.x = syncoff.x * s + 0.5 * (1 - s) * box.w + entity.x
+      box.y = syncoff.y + entity.y
+    end
   end
   -- Now hit detection on all registered hitboxes
   local seekers, hailers = coolision.sortcollisiongroups(gamedata.hitbox)

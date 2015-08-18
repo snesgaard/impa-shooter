@@ -397,5 +397,13 @@ actor.impa = function(gamedata, id, x, y)
     rifle = gamedata.init(gamedata, actors.rifle)
   }
   gamedata.weapons.inuse[id] = cache.weaponids.rifle
+  gamedata.hitbox[id] = {
+    body = coolision.newAxisBox(
+      id, x - w, y + h, w * 2, h * 2, gamedata.hitboxtypes.allybody
+    )
+  }
+  gamedata.hitboxsync[id] = {
+    body = {x = -w, y = h}
+  }
   gamedata.control[id] = coroutine.create(create_recursive_control(cache))
 end

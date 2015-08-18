@@ -52,5 +52,22 @@ misc.createtimer = function(start, duration)
     return time - start < duration
   end
 end
+misc.createhbsync = function(hitboxid, x, y)
+  local f
+  f = function(gamedata, id)
+    local e = gamedata.entity[id]
+    local hb = gamedata.hitbox[id][hitboxid]
+    local face = gamedata.face[id]
+    hb.y = e.y + y
+    if face == "right" then
+      hb.x = e.x + x
+    else
+      hb.x = e.x - x - hb.w
+    end
+    coroutine.yield()
+    return f(gamedata, id)
+  end
+  return f
+end
 
 return misc
