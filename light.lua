@@ -52,7 +52,7 @@ light.testsetup = function(gamedata)
   gamedata.light.point.pos = {{200, -10, 60}, {400, -10, 60}, {600, -10, 60}}
   gamedata.light.point.attenuation = {1e-5, 1e-5, 1e-5}
 
-  gamedata.light.ortho.count = 0
+  gamedata.light.ortho.count = 1
   gamedata.light.ortho.dir = {{1, 1, 1}}
   gamedata.light.ortho.color = {{1, 1, 1}}
   gamedata.light.ortho.coeffecient = {0.45}

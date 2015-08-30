@@ -229,11 +229,12 @@ function love.draw()
   love.graphics.setColor(255, 255, 255)
   -- Reset transforms
   love.graphics.origin()
+  gfx.setCanvas()
+  light.draw(gamedata, basecanvas, x, y)
   -- Introduce normalize screen coordinates for UI drawing
   -- love.graphics.scale(gamedata.visual.width, gamedata.visual.width)
+  love.graphics.scale(gamedata.visual.scale)
   for id, d in pairs(gamedata.visual.uidrawers) do
     coroutine.resume(d, gamedata, id)
   end
-  gfx.setCanvas()
-  light.draw(gamedata, basecanvas, x, y)
 end
