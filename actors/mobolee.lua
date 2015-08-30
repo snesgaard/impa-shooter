@@ -119,15 +119,15 @@ end
 hit.run = function(gamedata, id)
   local entity = gamedata.entity[id]
   entity.vx = 0
+  local h = gamedata.message[id].hit
+  if h.x - entity.x > 0 then
+    gamedata.face[id] = "right"
+  else
+    gamedata.face[id] = "left"
+  end
   gamedata.visual.drawers[id] = createprehitdrawer(gamedata)
   local prehittimer = misc.createtimer(gamedata.system.time, prehittime)
   while prehittimer(gamedata.system.time) do
-    local h = gamedata.message[id].hit
-    if h.x - entity.x > 0 then
-      gamedata.face[id] = "right"
-    else
-      gamedata.face[id] = "left"
-    end
     coroutine.yield()
   end
   gamedata.visual.drawers[id] = createhitdrawer(gamedata)

@@ -23,7 +23,7 @@ light.draw = function(gamedata, canvas, x, y)
   local shader = gamedata.visual.shaders[shaderpath]
   gfx.setShader(shader)
   shader:send("normalmap", gamedata.visual.images[normalmap])
-  shader:send("campos", {math.floor(-x), math.floor(y)})
+  shader:send("campos", {math.floor(-x), math.floor(y - gamedata.visual.height / gamedata.visual.scale)})
   shader:send("scale", 1.0 / gamedata.visual.scale)
   shader:send("ambientcoeffecient", light.ambient.coeffecient)
   shader:send("ambientcolor", light.ambient.color)
@@ -49,7 +49,7 @@ end
 light.testsetup = function(gamedata)
   gamedata.light.point.count = 3
   gamedata.light.point.color = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
-  gamedata.light.point.pos = {{200, -10, 60}, {400, -10, 60}, {600, -10, 60}}
+  gamedata.light.point.pos = {{200, -200, 60}, {400, -200, 60}, {600, -200, 60}}
   gamedata.light.point.attenuation = {1e-5, 1e-5, 1e-5}
 
   gamedata.light.ortho.count = 1
