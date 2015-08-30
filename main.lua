@@ -13,10 +13,15 @@ require ("actors/impa")
 require ("actors/mobolee")
 require "statsui"
 require ("modules/functional")
+require "light"
 
 function loadanimation(path, ...)
   local im = love.graphics.newImage(path)
   return newAnimation(im, ...)
+end
+
+function loadspriteimage(path)
+  return love.graphics.newImage(path)
 end
 
 function table.shallowcopy(orig)
@@ -66,7 +71,7 @@ function calculatecameracenter(map, entity)
   local ey = entity.y
   local x = math.min(map.x + mw - w / s, math.max(-map.x, ex - 0.5 * w / s))
   local y = math.max(map.y - mh + h / s, math.min(map.y, ey + 0.5 * h / s))
-  return -x, y
+  return -x, math.floor(y)
 end
 
 -- Timer and break condition related functions
@@ -97,7 +102,7 @@ function love.load()
   gfx = love.graphics
   -- Set filtering to nearest neighor
   local filter = "nearest"
-  local s = 6
+  local s = 4
   love.graphics.setDefaultFilter(filter, filter, 0)
   gamedata.visual.scale = s
   gamedata.visual.width = love.graphics.getWidth()
@@ -117,11 +122,12 @@ function love.load()
   loaders.bullet(gamedata)
   loaders.statsui(gamedata)
   loaders.mobolee(gamedata)
+  loaders.light(gamedata)
   -- Create actors and collect ids
   gamedata.game.playerid = gamedata.init(gamedata, actor.impa, 200, -100)
   gamedata.init(gamedata, actor.statsui)
-  gamedata.init(gamedata, actor.box, 300, -100)
-  gamedata.init(gamedata, actor.box, 250, -100)
+  --gamedata.init(gamedata, actor.box, 300, -100)
+  --gamedata.init(gamedata, actor.box, 250, -100)
   gamedata.init(gamedata, actor.mobolee, 400, -100)
   -- Canvas
   basecanvas = gfx.newCanvas(
@@ -134,6 +140,7 @@ function love.load()
       0, 0, gamedata.visual.width, gamedata.visual.height,
       pixeltiletex:getWidth(), pixeltiletex:getHeight()
     )
+  light.testsetup(gamedata)
 end
 
 function love.update(dt)
@@ -156,7 +163,7 @@ function love.update(dt)
     if face == "right" then s = 1 else s = -1 end
     for boxid, syncoff in pairs(synctable) do
       local box = gamedata.hitbox[id][boxid]
-      box.x = syncoff.x * s + 0.5 * (1 - s) * box.w + entity.x
+      box.x = syncoff.x * s - 0.5 * (1 - s) * box.w + entity.x
       box.y = syncoff.y + entity.y
     end
   end
@@ -166,7 +173,7 @@ function love.update(dt)
   -- Update weapon data
   rifle.updatemultipliers(gamedata)
   -- Update stamina: HACK Rate is not real
-  local rate = 1.0
+  local rate = 1
   for id, usedstam in pairs(gamedata.usedstamina) do
     local nextstam = usedstam - rate * gamedata.system.dt
     if nextstam < 0 then
@@ -194,7 +201,8 @@ function love.draw()
   -- Setup camera translation
   local tmap = gamedata.tilemaps[gamedata.game.activelevel]
   local pentity = gamedata.entity[gamedata.game.playerid]
-  love.graphics.translate(calculatecameracenter(tmap, pentity))
+  local x, y = calculatecameracenter(tmap, pentity)
+  love.graphics.translate(x, y)
   -- Draw level tilemap
   coroutine.resume(gamedata.visual.leveldraw, gamedata, gamedata.game.activelevel)
   -- Setup actor drawing transforms
@@ -227,12 +235,5 @@ function love.draw()
     coroutine.resume(d, gamedata, id)
   end
   gfx.setCanvas()
-  love.graphics.setColor(255, 255, 255)
-  gfx.draw(basecanvas, 0, 0, 0, gamedata.visual.scale)
-  local p = gamedata.system.pressed['w'] or 0
-  local r = gamedata.system.released['w'] or 0
-  if p  <=  r then
-    gfx.setColor(255, 255, 255, 255)
-    gfx.draw(pixeltiletex, pixelquad)
-  end
+  light.draw(gamedata, basecanvas, x, y)
 end

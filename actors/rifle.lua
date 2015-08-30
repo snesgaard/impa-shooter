@@ -45,7 +45,7 @@ local images = {
 
 loaders.rifle = function(gamedata)
   for _, path in pairs(images) do
-    gamedata.visual.images[path] = love.graphics.newImage(path)
+    gamedata.visual.images[path] = loadspriteimage(path)
   end
 end
 

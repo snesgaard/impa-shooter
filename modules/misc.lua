@@ -18,11 +18,17 @@ misc.createrepeatdrawer = function(anim)
       local e = gamedata.entity[id]
       local f = gamedata.face[id]
       anim:update(gamedata.system.dt)
+      local y = e.y + h
+      local x
+      local s
       if f == "right" then
-        anim:draw(e.x - w, e.y + h, 0, 1, -1)
+        x = e.x - w
+        s = 1
       else
-        anim:draw(e.x + w, e.y + h, 0, -1, -1)
+        x = e.x + w
+        s = -1
       end
+      anim:draw(math.floor(x), math.floor(y), 0, s, -1)
       coroutine.yield()
     end
   end)

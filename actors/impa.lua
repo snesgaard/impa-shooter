@@ -51,7 +51,7 @@ local imagepath = {
 
 loaders.impa = function(gamedata)
   for _, impath in pairs(imagepath) do
-    game.loadimage(gamedata, impath)
+    gamedata.visual.images[impath] = loadspriteimage(impath)
   end
   loaders.rifle(gamedata)
 end
@@ -324,8 +324,11 @@ evade.begin = function(gamedata, id, cache)
   if length ~= 0 then
     vx = evadespeed * vx / length
     vy = evadespeed * vy / length
+  elseif gamedata.face[id] == "right" then
+    vx = evadespeed
+    vy = 0
   else
-    vx = 0
+    vx = -evadespeed
     vy = 0
   end
   -- Descrease stamina
@@ -402,6 +405,7 @@ actor.impa = function(gamedata, id, x, y)
       id, x - w, y + h, w * 2, h * 2, gamedata.hitboxtypes.allybody
     )
   }
+  gamedata.hitbox[id].body.applydamage = function() print("ouch") end
   gamedata.hitboxsync[id] = {
     body = {x = -w, y = h}
   }

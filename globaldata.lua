@@ -1,4 +1,4 @@
-gamedata = {
+ gamedata = {
   actor = {}, -- Contains the type of all actors, an actor is garuanted to have an entry here
   cleanup = {}, -- Actors will insert a function which will be used to cleanup
   -- Actor specific data
@@ -14,6 +14,8 @@ gamedata = {
   speed = {},
   -- Control and hitbox related data
   control = {},
+  target = {},
+  message = {},
   hitbox = {},
   hitboxsync = {},
   hitboxtypes = {},
@@ -32,6 +34,25 @@ gamedata = {
     height = 0,
     aspect = 0,
     draworder = {},
+  },
+  light = {
+    gamma = {1.0, 1.0, 1.0},--{1.0 / 2.2, 1.0 / 2.2, 1.0 / 2.2},
+    ambient = {
+      color = {0, 0, 0},
+      coeffecient = 0,
+    },
+    point = {
+      count = 0,
+      pos = {},
+      color = {},
+      attenuation = {},
+    },
+    ortho = {
+      count = 0,
+      dir = {},
+      color = {},
+      coeffecient = {}
+    }
   },
   -- System related data and functionality
   system = {
@@ -95,6 +116,7 @@ end
 
 local draworder = {
   "box",
+  "mobolee",
   "damagenumber",
   "fire",
   "bullet",
