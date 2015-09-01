@@ -197,8 +197,10 @@ function love.draw()
   --love.graphics.scale(gamedata.visual.scale)
   basecanvas:clear()
   gfx.setCanvas(basecanvas)
-  gfx.setColor(255, 255, 255)
+  gfx.setColor(70, 70, 120)
   -- Setup camera translation
+  gfx.rectangle("fill", 0, 0, gamedata.visual.width, gamedata.visual.height)
+  gfx.setColor(255, 255, 255)
   local tmap = gamedata.tilemaps[gamedata.game.activelevel]
   local pentity = gamedata.entity[gamedata.game.playerid]
   local x, y = calculatecameracenter(tmap, pentity)

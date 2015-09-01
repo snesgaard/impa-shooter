@@ -40,8 +40,8 @@ local reloadkey = "s"
 local evadekey = "lshift"
 
 local imagepath = {
-  idle = "res/impa/idle.png",
-  walk = "res/impa/walk.png",
+  idle = "res/impa/rifleidle.png",
+  walk = "res/impa/riflewalk.png",
   ascend = "res/impa/ascend.png",
   descend = "res/impa/descend.png",
   fire = "res/impa/gunfire.png",

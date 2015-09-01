@@ -25,8 +25,8 @@ light.draw = function(gamedata, canvas, x, y)
   shader:send("normalmap", gamedata.visual.images[normalmap])
   shader:send("campos", {math.floor(-x), math.floor(y - gamedata.visual.height / gamedata.visual.scale)})
   shader:send("scale", 1.0 / gamedata.visual.scale)
-  shader:send("ambientcoeffecient", light.ambient.coeffecient)
-  shader:send("ambientcolor", light.ambient.color)
+  -- shader:send("ambientcoeffecient", light.ambient.coeffecient)
+  -- shader:send("ambientcolor", light.ambient.color)
   shader:send("gamma", light.gamma)
   -- Send a light source
   shader:sendInt("lights", light.point.count)
@@ -47,7 +47,7 @@ light.draw = function(gamedata, canvas, x, y)
 end
 
 light.testsetup = function(gamedata)
-  gamedata.light.point.count = 3
+  gamedata.light.point.count = 1
   gamedata.light.point.color = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}}
   gamedata.light.point.pos = {{200, -200, 60}, {400, -200, 60}, {600, -200, 60}}
   gamedata.light.point.attenuation = {1e-5, 1e-5, 1e-5}
@@ -55,7 +55,7 @@ light.testsetup = function(gamedata)
   gamedata.light.ortho.count = 1
   gamedata.light.ortho.dir = {{1, 1, 1}}
   gamedata.light.ortho.color = {{1, 1, 1}}
-  gamedata.light.ortho.coeffecient = {0.45}
+  gamedata.light.ortho.coeffecient = {1.0}
 
   gamedata.light.ambient.coeffecient = 0.05
   gamedata.light.ambient.color = {1, 1, 1}
