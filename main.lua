@@ -70,8 +70,9 @@ function calculatecameracenter(map, entity)
   local ex = entity.x
   local ey = entity.y
   local x = math.min(map.x + mw - w / s, math.max(-map.x, ex - 0.5 * w / s))
-  local y = math.max(map.y - mh + h / s, math.min(map.y, ey + 0.5 * h / s))
-  return -x, math.floor(y)
+  local my = math.floor(ey) + math.floor(0.5 * h / s)
+  local y = math.max(map.y - mh + h / s, math.min(map.y, my))
+  return math.floor(-x), math.floor(y)
 end
 
 -- Timer and break condition related functions

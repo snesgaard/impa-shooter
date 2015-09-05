@@ -187,18 +187,48 @@ dead.drawer = function(gamedata, id)
     gamedata.visual.images[ims.idle], 48, 48, 0.1, 2
   )
   local animeco = misc.createrepeatdrawer(anime)
-  local explodetime = 0.3
+  local explodetime = 0.5
   local f
   f = function(gamedata, id, nextexplode, explosions)
     nextexplode = nextexplode - gamedata.system.dt
+    -- If time create the next explostion
     if nextexplode < 0 then
+      nextexplode = explodetime
+      local e = gamedata.entity[id]
+      -- Sample explosion position
+      local x = love.math.random(e.x - e.wx, e.x + e.wx)
+      local y = love.math.random(e.y - e.wy, e.y + e.wy)
+      -- Create explosion sprite
+      local exw = 15
+      local exh = 18
+      local exanime = newAnimation(
+        gamedata.visual.images[ims.boom], exw, exh, 0.075, 6
+      )
+      -- Now declare coroutine which will draw the explosion
+      local f
+      f = function(gamedata)
+        misc.drawsprite(exanime, x, y, "right")
+        coroutine.yield()
+        exanime:update(gamedata.system.dt)
+        if exanime.playing then return f(gamedata) end
+      end
+      table.insert(explosions, coroutine.create(f))
     end
     coroutine.resume(animeco, gamedata, id)
+    -- Now iterate through all explosion coroutines
+    -- Discard whatever has finished
+    for k, exco in ipairs(explosions) do
+      if coroutine.status(exco) ~= "dead" then
+        coroutine.resume(exco, gamedata)
+      else
+        explosions[k] = nil
+      end
+    end
     coroutine.yield()
     return f(gamedata, id, nextexplode, explosions)
   end
   local init = function(gamedata, id)
-    return f(gamedata, id, explodetime, {})
+    return f(gamedata, id, 0, {})
   end
   return coroutine.create(init)
 end
@@ -253,7 +283,7 @@ actor.mobolee = function(gamedata, id, x, y)
   gamedata.soak[id] = 0
   gamedata.reduce[id] = 1
   gamedata.invincibility[id] = false
-  gamedata.health[id] = 1
+  gamedata.health[id] = 8
   gamedata.hitbox[id].body.applydamage = function(otherid, x, y, damage)
     local s = gamedata.soak[id]
     local r = gamedata.reduce[id]

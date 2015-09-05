@@ -47,17 +47,20 @@ misc.draw_sprite_entity = function(anim, entity, face)
   local f = face
   local w = anim:getWidth() * 0.5
   local h = anim:getHeight() * 0.5
+  local y = e.y + h
   if f == "right" then
-    anim:draw(math.floor(e.x - w), math.floor(e.y + h), 0, 1, -1)
+    anim:draw(math.floor(e.x - w), math.floor(y), 0, 1, -1)
   else
-    anim:draw(math.floor(e.x + w), math.floor(e.y + h), 0, -1, -1)
+    anim:draw(math.floor(e.x + w), math.ceil(y), 0, -1, -1)
   end
 end
 misc.drawsprite = function(anime, x, y, face)
+  local w = anime:getWidth() * 0.5
+  local h = anime:getHeight() * 0.5
   if face == "right" then
-    anime:draw(x, y, 0, 1, -1)
+    anime:draw(math.floor(x - w), math.floor(y + h), 0, 1, -1)
   else
-    anime:draw(x, y, 0, -1, -1)
+    anime:draw(math.floor(x + w), math.floor(y + h), 0, -1, -1)
   end
 end
 misc.createtimer = function(start, duration)
