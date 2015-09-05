@@ -179,7 +179,11 @@ actor.bullet = function(gamedata, id, x, y, speed, seek, dmg)
   }
   local callback = function(this, other)
     if other.applydamage ~= nil then
-      gamedata.bullet.damagedealt[id] = other.applydamage(this.id, 0, 0, dmg)
+      local x = this.x + this.w * 0.5
+      local y = this.y - this.h * 0.5 
+      gamedata.bullet.damagedealt[id] = other.applydamage(
+        this.id, x, y, dmg
+      )
     end
   end
   coolision.setcallback(body, callback)

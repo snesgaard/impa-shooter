@@ -85,7 +85,7 @@ fire.run = function(gamedata, id, masterid)
   )
   local inittime = gamedata.system.time
   local posttimer = misc.createtimer(inittime, fireframetime * (fireframes - 1))
-  local waittimer = misc.createtimer(inittime, fireframetime)
+  local waittimer = misc.createtimer(inittime, 0)
   while posttimer(gamedata.system.time) do
     local reloadkey = gamedata.keys.reload
     local firekey = gamedata.keys.fire
@@ -248,7 +248,9 @@ actor.riflebullet = function(gamedata, id, x, y, multi, face)
   local speed = 250
   if face == "left" then speed = -speed end
   local color = multicolor[multi]
-  actor.bullet(gamedata, id, x, y, speed, gamedata.hitboxtypes.enemybody, dmg)
+  actor.bullet(
+    gamedata, id, x, y, speed, gamedata.hitboxtypes.enemybody, dmg
+  )
   local basecontrol = gamedata.control[id]
   local basedraw = gamedata.visual.drawers[id]
   local speed = 0
@@ -272,8 +274,10 @@ actor.riflebullet = function(gamedata, id, x, y, multi, face)
   -- When max level is reached, change callback to be more penetrating
   if multi == multiplermax then
     local dmgfunc = function(this, other)
+      local x = this.x + this.w * 0.5
+      local y = this.y - this.h * 0.5
       if other.applydamage then
-        other.applydamage(this.id, 0, 0, dmg)
+        other.applydamage(this.id, x, y, dmg)
       end
       return this, other
     end

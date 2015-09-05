@@ -6,6 +6,7 @@ local ims = {
   idle = "res/mobolee/idle.png",
   prehit = "res/mobolee/prehit.png",
   walk = "res/mobolee/walk.png",
+  boom = "res/majorbulletimpact.png"
 }
 
 local w = 6
@@ -16,6 +17,7 @@ local prehittime = 0.4
 local hittime = 0.2
 local hitframes = 4
 local hitframetime = hittime / hitframes
+local dyingtime = 2.0
 
 local psearch = {
   w = 300, h = 200
@@ -27,7 +29,7 @@ local phit = {
 
 loaders.mobolee = function(gamedata)
   for _, path in pairs(ims) do
-    gamedata.visual.images[path] = loadspriteimage(path)
+    gamedata.visual.images[path] = gamedata.visual.images[path] or loadspriteimage(path)
   end
 end
 
@@ -62,6 +64,8 @@ end
 local idle = {}
 local hit = {}
 local follow = {}
+local control = {}
+local dead = {}
 
 idle.begin = function(gamedata, id)
   gamedata.visual.drawers[id] = createidledrawer(gamedata)
@@ -161,8 +165,60 @@ hit.run = function(gamedata, id)
   return idle.begin(gamedata, id)
 end
 
+dead.run = function(gamedata, id)
+  -- Remove hitbox system
+  gamedata.hitbox[id] = nil
+  gamedata.hitboxsync[id] = nil
+  local timer = misc.createtimer(gamedata.system.time, dyingtime)
+  gamedata.visual.drawers[id] = dead.drawer(gamedata, id)
+  while timer(gamedata.system.time) do
+    gamedata.entity[id].vx = 0
+    gamedata.entity[id].vy = 0
+    coroutine.yield()
+  end
+  gamedata.cleanup[id] = function(gamedata, id)
+    gamedata.control[id] = nil
+    gamedata.visual.drawers[id] = nil
+    gamedata.entity[id] = nil
+  end
+end
+dead.drawer = function(gamedata, id)
+  local anime = newAnimation( -- Place holer
+    gamedata.visual.images[ims.idle], 48, 48, 0.1, 2
+  )
+  local animeco = misc.createrepeatdrawer(anime)
+  local explodetime = 0.3
+  local f
+  f = function(gamedata, id, nextexplode, explosions)
+    nextexplode = nextexplode - gamedata.system.dt
+    if nextexplode < 0 then
+    end
+    coroutine.resume(animeco, gamedata, id)
+    coroutine.yield()
+    return f(gamedata, id, nextexplode, explosions)
+  end
+  local init = function(gamedata, id)
+    return f(gamedata, id, explodetime, {})
+  end
+  return coroutine.create(init)
+end
+control.begin = function(gamedata, id)
+  local co = coroutine.create(idle.begin)
+  return control.run(gamedata, id, co)
+end
+control.run = function(gamedata, id, co)
+  coroutine.resume(co, gamedata, id)
+  coroutine.yield()
+  local d = gamedata.damage[id] or 0
+  local h = gamedata.health[id]
+  if d < h then
+    return control.run(gamedata, id, co)
+  else
+    return dead.run(gamedata, id)
+  end
+end
 local init = function(gamedata)
-  return idle.begin
+  return control.begin
 end
 
 actor.mobolee = function(gamedata, id, x, y)
@@ -194,8 +250,23 @@ actor.mobolee = function(gamedata, id, x, y)
       id, x, y, w * 2, h * 2, gamedata.hitboxtypes.enemybody
     )
   }
+  gamedata.soak[id] = 0
+  gamedata.reduce[id] = 1
+  gamedata.invincibility[id] = false
+  gamedata.health[id] = 1
+  gamedata.hitbox[id].body.applydamage = function(otherid, x, y, damage)
+    local s = gamedata.soak[id]
+    local r = gamedata.reduce[id]
+    local i = gamedata.invincibility[id]
+    local d = combat.calculatedamage(damage, s, r, i)
+    local e = gamedata.entity[id]
+    gamedata.init(gamedata, actor.damagenumber, x, y + 20, d, 0.5)
+    gamedata.damage[id] = (gamedata.damage[id] or 0) + d
+    return d
+  end
   gamedata.hitboxsync[id] = {
     playersearch = {x = -psearch.w * 0.5, y = psearch.h * 0.5},
-    playerhit = {x = -phit.w * 0.5, y = phit.h * 0.5}
+    playerhit = {x = -phit.w * 0.5, y = phit.h * 0.5},
+    body = {x = -w, y = h},
   }
 end

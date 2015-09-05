@@ -3,6 +3,7 @@
   cleanup = {}, -- Actors will insert a function which will be used to cleanup
   -- Actor specific data
   health = {},
+  damage = {},
   stamina = {},
   maxhealth = {},
   maxstamina = {},
