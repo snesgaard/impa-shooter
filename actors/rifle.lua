@@ -12,8 +12,8 @@ local reloadframes = 5
 local reloadframettime = reloadtime / (reloadframes * 2)
 
 local fullreloadtime = 1.5
-local fullreloadframes = reloadframes
-local fullreloadft = fullreloadtime / (fullreloadframes * 2)
+local fullreloadframes = 16
+local fullreloadft = fullreloadtime / fullreloadframes
 
 --UI defines
 local bulletscale = 0.001
@@ -37,8 +37,10 @@ local exhaustcoords = {x = 18, y = 1}
 
 local images = {
   riflefire = "res/impa/riflefire.png",
+  arialfire = "res/impa/arialriflefire.png",
   riflecomboreload = "res/impa/riflecomboreload.png",
-  riflereload = "res/impa/riflecomboreload.png",
+  arialcomboreload = "res/impa/arialcomboreload.png",
+  riflereload = "res/impa/riflereload.png",
   riflebullet = "res/impa/riflebulletui.png",
   btrailim = "res/btrailparticle.png",
 }
@@ -58,11 +60,19 @@ fire.run = function(gamedata, id, masterid)
   if useda >= maxa then -- play botched fire animation / state here
     return
   end
-  local anime = newAnimation(
-    gamedata.visual.images[images.riflefire], 48, 48, fireframetime,
-    fireframes
-  )
-  gamedata.visual.drawers[masterid] = misc.createoneshotdrawer(anime)
+  if game.onground(gamedata, masterid, 0.1) then
+    local anime = newAnimation(
+      gamedata.visual.images[images.riflefire], 48, 48, fireframetime,
+      fireframes
+    )
+    gamedata.visual.drawers[masterid] = misc.createoneshotdrawer(anime)
+  else
+    local anime = newAnimation(
+      gamedata.visual.images[images.arialfire], 48, 48, fireframetime,
+      fireframes
+    )
+    gamedata.visual.drawers[masterid] = misc.createoneshotdrawer(anime)
+  end
   local pretimer = misc.createtimer(gamedata.system.time, fireframetime)
   while pretimer(gamedata.system.time) do
     coroutine.yield()
@@ -117,11 +127,19 @@ reload.combo = function(gamedata, id, masterid)
   local multi = gamedata.rifle.multilevel[id] or 0
   gamedata.rifle.multilevel[id] = math.min(multi + 1, multiplermax)
   local reloadtimer = misc.createtimer(gamedata.system.time, reloadtime)
-  local im = gamedata.visual.images[images.riflecomboreload]
-  local anime = newAnimation(
-    im, 48, 48, reloadframettime, reloadframes
-  )
-  gamedata.visual.drawers[masterid] = misc.createbouncedrawer(anime)
+  if game.onground(gamedata, masterid, 0.1) then
+    local anime = newAnimation(
+      gamedata.visual.images[images.riflecomboreload], 48, 48,
+      reloadframettime, reloadframes
+    )
+    gamedata.visual.drawers[masterid] = misc.createbouncedrawer(anime)
+  else
+    local anime = newAnimation(
+      gamedata.visual.images[images.arialcomboreload], 48, 48,
+      reloadframettime, reloadframes
+    )
+    gamedata.visual.drawers[masterid] = misc.createbouncedrawer(anime)
+  end
   local nextrun
   while reloadtimer(gamedata.system.time) do
     local firekey = gamedata.keys.fire
@@ -134,13 +152,25 @@ reload.combo = function(gamedata, id, masterid)
   if nextrun then return nextrun(gamedata, id, masterid) end
 end
 reload.normal = function(gamedata, id, masterid)
-  if not gamedata.weapons.usedammo[id] then return end
-  gamedata.weapons.usedammo[id] = nil
+  if not gamedata.weapons.usedammo[id] or
+    not game.onground(gamedata, masterid, 0.1) then
+      return
+  end
   local im = gamedata.visual.images[images.riflereload]
   local anime = newAnimation(im, 48, 48, fullreloadft, fullreloadframes)
-  gamedata.visual.drawers[masterid] = misc.createbouncedrawer(anime)
-  local timer = misc.createtimer(gamedata.system.time, fullreloadtime)
-  while timer(gamedata.system.time) do
+  gamedata.visual.drawers[masterid] = misc.createoneshotdrawer(anime)
+  local preframes = 10
+  local pretimer = misc.createtimer(
+    gamedata.system.time, fullreloadft * preframes
+  )
+  while pretimer(gamedata.system.time) do
+    coroutine.yield()
+  end
+  gamedata.weapons.usedammo[id] = nil
+  local posttimer = misc.createtimer(
+    gamedata.system.time, fullreloadft * (fullreloadframes - preframes)
+  )
+  while posttimer(gamedata.system.time) do
     coroutine.yield()
   end
 end
