@@ -24,7 +24,7 @@ local drawstats = function(gamedata, id)
     if hp then
       renderhp = hp.health - hp.damage
     else
-      renderhp = gamedata.maxhealth[pid]
+      renderhp = gamedata.maxhealth[pid] or 0
     end
     --love.graphics.setColor(255, 75, 75)
     local offset = 10
@@ -40,7 +40,7 @@ local drawstats = function(gamedata, id)
     if stam then
       renderstam = stam.stamina - stam.damage
     else
-      renderstam = gamedata.maxstamina[pid]
+      renderstam = gamedata.maxstamina[pid] or 0
     end
     local usedstam = gamedata.usedstamina[pid] or 0
     local maxstam = gamedata.maxstamina[pid] or 0

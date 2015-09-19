@@ -8,24 +8,26 @@ misc.setPosSTIMap = function(map, x, y)
   map.y = y
   return map
 end
-misc.createrepeatdrawer = function(anim)
+misc.createrepeatdrawer = function(anim, ox, oy)
   anim:reset()
   anim:play()
   local w = anim:getWidth() / 2
   local h = anim:getHeight() / 2
+  ox = ox or 0
+  oy = oy or 0
   local co = coroutine.create(function(gamedata, id)
     while true do
       local e = gamedata.entity[id]
       local f = gamedata.face[id]
       anim:update(gamedata.system.dt)
-      local y = e.y + h
+      local y = e.y + h + oy
       local x
       local s
       if f == "right" then
-        x = e.x - w
+        x = e.x - w + ox
         s = 1
       else
-        x = e.x + w
+        x = e.x + w + ox
         s = -1
       end
       anim:draw(math.floor(x), math.floor(y), 0, s, -1)

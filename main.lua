@@ -11,6 +11,7 @@ local sti = require ("modules/sti")
 require ("actors/box")
 require ("actors/impa")
 require ("actors/mobolee")
+require ("actors/shalltear")
 require "statsui"
 require ("modules/functional")
 require "light"
@@ -124,11 +125,11 @@ function love.load()
   loaders.statsui(gamedata)
   loaders.mobolee(gamedata)
   loaders.light(gamedata)
+  loaders.shalltear(gamedata)
   -- Create actors and collect ids
-  gamedata.game.playerid = gamedata.init(gamedata, actor.impa, 200, -100)
+  --gamedata.init(gamedata, actor.impa, 200, -100)
   gamedata.init(gamedata, actor.statsui)
-  --gamedata.init(gamedata, actor.box, 300, -100)
-  --gamedata.init(gamedata, actor.box, 250, -100)
+  gamedata.game.playerid = gamedata.init(gamedata, actor.shalltear, 100, -100)
   gamedata.init(gamedata, actor.mobolee, 400, -100)
   -- Canvas
   basecanvas = gfx.newCanvas(
