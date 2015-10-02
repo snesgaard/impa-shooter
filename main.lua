@@ -39,6 +39,10 @@ function table.shallowcopy(orig)
     return copy
 end
 
+function drawhitbox(hitbox)
+  love.graphics.rectangle("line", hitbox.x, hitbox.y, hitbox.w, -hitbox.h)
+end
+drawboxes = false
 
 function love.keypressed(key, isrepeat)
   print(key)
@@ -130,7 +134,7 @@ function love.load()
   --gamedata.init(gamedata, actor.impa, 200, -100)
   gamedata.init(gamedata, actor.statsui)
   gamedata.game.playerid = gamedata.init(gamedata, actor.shalltear, 100, -100)
-  gamedata.init(gamedata, actor.mobolee, 400, -100)
+  local tid = gamedata.init(gamedata, actor.mobolee, 400, -100)
   -- Canvas
   basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height
@@ -143,6 +147,11 @@ function love.load()
       pixeltiletex:getWidth(), pixeltiletex:getHeight()
     )
   light.testsetup(gamedata)
+  -- test sprite
+  astra = newAnimation(
+    love.graphics.newImage("res/astramage.png"), 48, 48, 0.25, 4
+  )
+  valiant = gfx.newImage("res/valiantastra.png")
 end
 
 function love.update(dt)
@@ -156,6 +165,7 @@ function love.update(dt)
   for _, e in pairs(gamedata.entity) do
     mapAdvanceEntity(tmap, "game", e, dt)
   end
+  resolveoverlap(tmap, "game", gamedata.entity2entity, gamedata.entity)
   -- Sync all hitboxes to entities, if possible
   for id, synctable in pairs(gamedata.hitboxsync) do
     -- Assume that entity is set, otherwise provoke an error
@@ -171,6 +181,7 @@ function love.update(dt)
   end
   -- Now hit detection on all registered hitboxes
   local seekers, hailers = coolision.sortcollisiongroups(gamedata.hitbox)
+  if drawboxes then drawhailers = hailers end
   coolision.docollisiongroups(seekers, hailers)
   -- Update weapon data
   rifle.updatemultipliers(gamedata)
@@ -193,6 +204,7 @@ function love.update(dt)
     gamedata.unregister(id)
   end
   gamedata.cleanup = {}
+  astra:update(dt)
 end
 
 function love.draw()
@@ -229,6 +241,16 @@ function love.draw()
   -- Okay run drawing after sorting
   for _, t in ipairs(sorted_drawers) do
     coroutine.resume(t.co, gamedata, t.id)
+  end
+  astra:draw(20, -80, 0, 1, -1)
+  gfx.draw(valiant, 200, -128, 0, 1, -1)
+  -- Draw boxes if needed
+  if drawboxes then
+    for _, subhailer in pairs(drawhailers) do
+      for _, box in pairs(subhailer) do
+        drawhitbox(box)
+      end
+    end
   end
   love.graphics.setColor(255, 255, 255)
   -- Reset transforms

@@ -180,6 +180,8 @@ dead.run = function(gamedata, id)
     gamedata.control[id] = nil
     gamedata.visual.drawers[id] = nil
     gamedata.entity[id] = nil
+    gamedata.entity2entity[id] = nil
+    gamedata.entity2terrain[id] = nil
   end
 end
 dead.drawer = function(gamedata, id)
@@ -254,14 +256,17 @@ end
 actor.mobolee = function(gamedata, id, x, y)
   gamedata.actor[id] = "mobolee"
   gamedata.entity[id] = newEntity(x, y, w, h)
+  gamedata.entity2entity[id] = id
+  gamedata.entity2terrain[id] = id
   gamedata.face[id] = "right"
   gamedata.control[id] = coroutine.create(init(gamedata))
   gamedata.message[id] = {}
   gamedata.stamina[id] = 1
+  local targettype = nil -- gamedata.hitboxtypes.allybody
   gamedata.hitbox[id] = {
     playersearch = coolision.newAxisBox(
       id, x - psearch.w, y + psearch.h, psearch.w,
-      psearch.h, nil, gamedata.hitboxtypes.allybody,
+      psearch.h, nil, targettype,
       function(this, other)
         gamedata.target[id] = {
           x = other.x + other.w * 0.5, y = other.y - other.h * 0.5
@@ -269,7 +274,7 @@ actor.mobolee = function(gamedata, id, x, y)
       end
     ),
     playerhit = coolision.newAxisBox(
-      id, x, y, phit.w, phit.h, nil, gamedata.hitboxtypes.allybody,
+      id, x, y, phit.w, phit.h, nil, targettype,
       function(this, other)
         gamedata.message[id].hit = {
           x = other.x + other.w * 0.5, y = other.y - other.h * 0.5

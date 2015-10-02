@@ -53,24 +53,25 @@ coolision.collisiondetect = function(axisboxtable, x, y)
 
   local collisiontable = {}
 
-  for k, boxa in pairs(axisboxtable) do
+  for ka, boxa in pairs(axisboxtable) do
     local potentialcol = {}
-    for _, boxb in next, axisboxtable, k do
+    for kb, boxb in next, axisboxtable, ka do
       if xoverlaptest(boxa, boxb) then
-        table.insert(potentialcol, boxb)
+        table.insert(potentialcol, kb)
       else
         break
       end
     end
     -- check for y collision and register
     local cola = {}
-    for _, boxb in pairs(potentialcol) do
+    for _, kb in pairs(potentialcol) do
+      local boxb = axisboxtable[kb]
       if yoverlaptest(boxa, boxb) then
-        table.insert(cola, boxb)
+        table.insert(cola, kb)
       end
     end
     if #cola > 0 then
-      collisiontable[boxa] = cola
+      collisiontable[ka] = cola
     end
   end
 

@@ -87,6 +87,8 @@
   -- Level related data
   tilemaps = {},
   entity = {},
+  entity2terrain = {},
+  entity2entity = {},
   face = {},
   ground = {},
   -- Input related data
@@ -133,6 +135,7 @@ local hitboxtypes = {
   "enemybody",
   "allybody",
   "allyprojectile",
+  "allyactive",
 }
 
 for id, ent in pairs(hitboxtypes) do

@@ -1,4 +1,5 @@
 require "math"
+local fun = require ("modules/functional")
 
 gravity = {}
 gravity.x = 0.0
@@ -294,6 +295,16 @@ function mapAdvanceEntity(map, layer_index, entity, dt)
   end
 end
 
+function mapMoveEntity(map, layer, entity, dx, dy)
+  local ovx = entity.vx
+  local ovy = entity.vy
+  entity.vx = dx
+  entity.vy = dy
+  mapAdvanceEntity(map, layer, entity, 1)
+  entity.vx = ovx
+  entity.vy = ovy
+end
+
 --Iterates through all tilesets in a tiled map and populates them with left
 --and right members if the tile properties contain these.
 --They will be parse as being a number for a bit faster processing in realtime
@@ -319,4 +330,24 @@ function generateCollisionMap(map, layer_index)
   end
 
   return collisionMap
+end
+
+function resolveoverlap(map, layer, idlist, entities)
+  local ent2box = function(id)
+    local e = entities[id]
+    return coolision.newAxisBox(0, e.x - e.wx, e.y + e.wx, e.wx * 2, e.wy * 2)
+  end
+  local boxes = fun.fmap(ent2box, idlist)
+  local cool = coolision.collisiondetect(boxes, 1, 0)
+  for ida, subcool in pairs(cool) do
+    for _, idb in pairs(subcool) do
+      local lowid = entities[ida].x < entities[idb].x and ida or idb
+      local highid = lowid == ida and idb or ida
+      -- Find overlap
+      local ov = ((entities[lowid].x + entities[lowid].wx)
+                  - (entities[highid].x - entities[highid].wx))
+      mapMoveEntity(map, layer, entities[lowid], -ov * 0.5, 0)
+      mapMoveEntity(map, layer, entities[highid], ov * 0.5, 0)
+    end
+  end
 end

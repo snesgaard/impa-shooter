@@ -47,6 +47,7 @@ local init = function(x, y, damage, lifetime)
 end
 
 actor.damagenumber = function(gamedata, id, x, y, damage, lifetime)
+  print(x, y)
   gamedata.actor[id] = "damagenumber"
   gamedata.visual.drawers[id] = coroutine.create(init(x, y, damage, lifetime))
 end
