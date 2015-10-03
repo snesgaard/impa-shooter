@@ -63,4 +63,15 @@ combat.activeboxsequence = function(
   while posttimer(gamedata.system.time) do coroutine.yield() end
 end
 
+function combat.dodamage(gamedata, id, dmg, soak, reduce, invicibility)
+  soak = soak or gamedata.soak[id]
+  reduce = reduce or gamedata.reduce[id]
+  invicibility = invicibility or gamedata.invincibility[id]
+  local d = combat.calculatedamage(dmg, soak, reduce, invicibility)
+  local e = gamedata.entity[id]
+  gamedata.init(gamedata, actor.damagenumber, e.x, e.y + 20, d, 0.5)
+  gamedata.damage[id] = (gamedata.damage[id] or 0) + d
+  return d
+end
+
 return combat

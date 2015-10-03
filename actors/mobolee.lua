@@ -20,7 +20,7 @@ local hitframetime = hittime / hitframes
 local dyingtime = 2.0
 
 local psearch = {
-  w = 300, h = 200
+  w = 600, h = 200
 }
 local followthreshold = 2
 local phit = {
@@ -262,7 +262,7 @@ actor.mobolee = function(gamedata, id, x, y)
   gamedata.control[id] = coroutine.create(init(gamedata))
   gamedata.message[id] = {}
   gamedata.stamina[id] = 1
-  local targettype = nil -- gamedata.hitboxtypes.allybody
+  local targettype = gamedata.hitboxtypes.allybody
   gamedata.hitbox[id] = {
     playersearch = coolision.newAxisBox(
       id, x - psearch.w, y + psearch.h, psearch.w,
@@ -290,13 +290,7 @@ actor.mobolee = function(gamedata, id, x, y)
   gamedata.invincibility[id] = false
   gamedata.health[id] = 8
   gamedata.hitbox[id].body.applydamage = function(otherid, x, y, damage)
-    local s = gamedata.soak[id]
-    local r = gamedata.reduce[id]
-    local i = gamedata.invincibility[id]
-    local d = combat.calculatedamage(damage, s, r, i)
-    local e = gamedata.entity[id]
-    gamedata.init(gamedata, actor.damagenumber, x, y + 20, d, 0.5)
-    gamedata.damage[id] = (gamedata.damage[id] or 0) + d
+    local d = combat.dodamage(gamedata, id, damage)
     return d
   end
   gamedata.hitboxsync[id] = {

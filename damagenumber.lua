@@ -10,7 +10,7 @@ local speed = 50.0
 
 local drawtext = function(text, color, x, y)
   love.graphics.setColor(unpack(color))
-  love.graphics.print(text, x, y, 0, 1, -1)
+  love.graphics.print(text, x - 3, y, 0, 1, -1)
   love.graphics.setColor(255, 255, 255)
 end
 

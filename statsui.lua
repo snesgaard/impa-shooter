@@ -20,11 +20,12 @@ local drawstats = function(gamedata, id)
     local renderhp = 0
     --local maxhp = gamedata.maxhealth[pid]
     local hp = gamedata.health[pid]
+    local dmg = gamedata.damage[pid]
     local hpim = gamedata.visual.images[images.hporb]
-    if hp then
-      renderhp = hp.health - hp.damage
+    if hp and dmg then
+      renderhp = hp - dmg
     else
-      renderhp = gamedata.maxhealth[pid] or 0
+      renderhp = gamedata.health[pid] or 0
     end
     --love.graphics.setColor(255, 75, 75)
     local offset = 10

@@ -12,16 +12,18 @@ local projectspan = function(box, x, y)
   return math.min(lp, hp), math.max(lp, hp)
 end
 
-local function sort(axisboxtable, x, y)
-  local axiscompare = function(boxa, boxb)
+local function sort(idtable, axisboxtable, x, y)
+  local axiscompare = function(ida, idb)
+    local boxa = axisboxtable[ida]
+    local boxb = axisboxtable[idb]
     local la, ha = projectspan(boxa, x, y)
     local lb, hb = projectspan(boxb, x, y)
     return la < lb
   end
 
-  table.sort(axisboxtable, axiscompare)
+  table.sort(idtable, axiscompare)
 
-  return axisboxtable
+  return idtable
 end
 
 local function groupedsort(axisboxtable, x, y)
@@ -49,29 +51,35 @@ local function yoverlaptest(boxa, boxb)
 end
 
 coolision.collisiondetect = function(axisboxtable, x, y)
-  local sortedtable = sort(axisboxtable, x, y)
+  local idtable = {}
+  for id, _ in pairs(axisboxtable) do
+    table.insert(idtable, id)
+  end
+  local sortedidtable = sort(idtable, axisboxtable, x, y)
 
   local collisiontable = {}
 
-  for ka, boxa in pairs(axisboxtable) do
+  for ka, ida in pairs(sortedidtable) do
     local potentialcol = {}
-    for kb, boxb in next, axisboxtable, ka do
+    local boxa = axisboxtable[ida]
+    for kb, idb in next, sortedidtable, ka do
+      local boxb = axisboxtable[idb]
       if xoverlaptest(boxa, boxb) then
-        table.insert(potentialcol, kb)
+        table.insert(potentialcol, idb)
       else
         break
       end
     end
     -- check for y collision and register
     local cola = {}
-    for _, kb in pairs(potentialcol) do
-      local boxb = axisboxtable[kb]
+    for _, idb in pairs(potentialcol) do
+      local boxb = axisboxtable[idb]
       if yoverlaptest(boxa, boxb) then
-        table.insert(cola, kb)
+        table.insert(cola, idb)
       end
     end
     if #cola > 0 then
-      collisiontable[ka] = cola
+      collisiontable[ida] = cola
     end
   end
 

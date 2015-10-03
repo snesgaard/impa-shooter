@@ -134,7 +134,8 @@ function love.load()
   --gamedata.init(gamedata, actor.impa, 200, -100)
   gamedata.init(gamedata, actor.statsui)
   gamedata.game.playerid = gamedata.init(gamedata, actor.shalltear, 100, -100)
-  local tid = gamedata.init(gamedata, actor.mobolee, 400, -100)
+  gamedata.init(gamedata, actor.mobolee, 400, -100)
+  gamedata.init(gamedata, actor.mobolee, 500, -100)
   -- Canvas
   basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height

@@ -393,10 +393,15 @@ function actor.shalltear(gamedata, id, x, y)
       id, x - w, y + h, w * 2, h * 2, gamedata.hitboxtypes.allybody
     )
   }
-  gamedata.hitbox[id].body.applydamage = function() print("ouch") end
+  gamedata.hitbox[id].body.applydamage = function(otherid, x, y, dmg)
+    return combat.dodamage(gamedata, id, dmg)
+  end
   gamedata.hitboxsync[id] = {
     body = {x = -w, y = h}
   }
   -- gamedata.health[id] = 8
-  gamedata.maxhealth[id] = 8
+  gamedata.health[id] = 8
+  gamedata.reduce[id] = 1
+  gamedata.soak[id] = 0
+  gamedata.invincibility[id] = false
 end
