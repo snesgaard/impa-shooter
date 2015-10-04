@@ -48,6 +48,16 @@ local function isbeast(gamedata, id)
   end
 end
 
+local function turn(gamedata, id)
+  local l = input.isdown(gamedata, "left")
+  local r = input.isdown(gamedata, "right")
+  if l and not r then
+    gamedata.face[id] = "left"
+  elseif not l and r then
+    gamedata.face[id] = "right"
+  end
+end
+
 local control = {}
 local normal = {}
 local evade = {}
@@ -285,6 +295,7 @@ function clawa.run(gamedata, id)
     )
   )
   gamedata.entity[id].vx = 0
+  turn(gamedata, id)
   combat.activeboxsequence(
     gamedata, id, "hit", 2, 0, 11, 23, 15, ft * 2, ft * 3, clawa.time
   )
@@ -321,6 +332,7 @@ function clawb.run(gamedata, id)
       gamedata.visual.images[ims.clawb], 48, 48, ft, clawb.frames
     )
   )
+  turn(gamedata, id)
   local s = gamedata.face[id] == "right" and 1 or -1
   gamedata.entity[id].vx = s * clawb.dist / clawb.time
   combat.activeboxsequence(
