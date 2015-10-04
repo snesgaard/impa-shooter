@@ -350,21 +350,28 @@ function resolveoverlap(map, layer, idlist, entities)
       -- Find overlap
       local ov = ((entities[lowid].x + entities[lowid].wx)
                   - (entities[highid].x - entities[highid].wx))
-      local ml = math.abs(entities[lowid].vx) > 1
-      local mh = math.abs(entities[highid].vx) > 1
+      local vl = math.abs(entities[lowid].vx)
+      local vh = math.abs(entities[highid].vx)
+      local ml = vl > 1
+      local mh = vh > 1
       -- Expel whoever is moving
       -- If nobody or both are, move according to weightin scheme
       if ml and not mh then
         mapMoveEntity(map, layer, entities[lowid], -ov, 0)
       elseif not ml and mh then
         mapMoveEntity(map, layer, entities[highid], ov, 0)
+      elseif ml and mh then
+        local sum = vl + vh
+        print(sum)
+        mapMoveEntity(map, layer, entities[lowid], -ov * vl / sum, 0)
+        mapMoveEntity(map, layer, entities[highid], ov * vh / sum, 0)
       else
         local wl = idlist[lowid]
         local wh = idlist[highid]
         local sum = wl + wh
         wl = sum > 0 and wl or 1
         wh = sum > 0 and wh or 1
-        mapMoveEntity(map, layer, entities[lowid], -ov * wh / sum , 0)
+        mapMoveEntity(map, layer, entities[lowid], -ov * wh / sum, 0)
         mapMoveEntity(map, layer, entities[highid], ov * wl / sum, 0)
       end
     end

@@ -65,6 +65,7 @@ function game.init(gamedata)
   gamedata.game.playerid = gamedata.init(gamedata, actor.shalltear, 100, -100)
   gamedata.init(gamedata, actor.mobolee, 400, -100)
   gamedata.init(gamedata, actor.mobolee, 500, -100)
+  gamedata.init(gamedata, actor.mobolee, 600, -100)
   return game.run(gamedata)
 end
 

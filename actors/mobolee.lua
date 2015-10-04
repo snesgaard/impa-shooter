@@ -268,9 +268,12 @@ actor.mobolee = function(gamedata, id, x, y)
       id, x - psearch.w, y + psearch.h, psearch.w,
       psearch.h, nil, targettype,
       function(this, other)
-        gamedata.target[id] = {
-          x = other.x + other.w * 0.5, y = other.y - other.h * 0.5
-        }
+        local px = other.x + other.w * 0.5
+        if math.abs(px - this.x - this.w * 0.5) > phit.w * 0.5 then
+          gamedata.target[id] = {
+            x = other.x + other.w * 0.5, y = other.y - other.h * 0.5
+          }
+        end
       end
     ),
     playerhit = coolision.newAxisBox(
