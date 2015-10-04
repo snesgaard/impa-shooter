@@ -259,7 +259,7 @@ function evade.run(gamedata, id)
   end
   gamedata.entity[id].vx = 0
   gamedata.entity[id].vy = 0
-  gamedata.entity2entity[id] = id
+  gamedata.entity2entity[id] = 0
   gamedata.message[id].beast = gamedata.system.time
   return normal.begin(gamedata, id)
 end

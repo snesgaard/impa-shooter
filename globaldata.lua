@@ -116,6 +116,23 @@ gamedata.init = function(data, f, ...)
   f(data, id, ...)
   return id
 end
+function gamedata.softcleanactor(data, id)
+  data.control[id] = nil
+  data.entity[id] = nil
+  data.entity2entity[id] = nil
+  data.entity2terrain[id] = nil
+  data.visual.drawers[id] = nil
+  data.visual.uidrawers[id] = nil
+  data.hitbox[id] = nil
+  data.hitboxsync[id] = nil
+  data.cleanup[id] = nil
+  data.damage[id] = 0
+end
+function gamedata.softreset(data)
+  seed = 1
+  available_id = {}
+  for id, _ in pairs(data.actor) do gamedata.softcleanactor(data, id) end
+end
 
 local draworder = {
   "box",

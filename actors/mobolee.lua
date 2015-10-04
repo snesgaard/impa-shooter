@@ -256,7 +256,7 @@ end
 actor.mobolee = function(gamedata, id, x, y)
   gamedata.actor[id] = "mobolee"
   gamedata.entity[id] = newEntity(x, y, w, h)
-  gamedata.entity2entity[id] = id
+  gamedata.entity2entity[id] = 1
   gamedata.entity2terrain[id] = id
   gamedata.face[id] = "right"
   gamedata.control[id] = coroutine.create(init(gamedata))
@@ -289,6 +289,7 @@ actor.mobolee = function(gamedata, id, x, y)
   gamedata.reduce[id] = 1
   gamedata.invincibility[id] = false
   gamedata.health[id] = 8
+  gamedata.damage[id] = 0
   gamedata.hitbox[id].body.applydamage = function(otherid, x, y, damage)
     local d = combat.dodamage(gamedata, id, damage)
     return d

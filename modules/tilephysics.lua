@@ -337,7 +337,11 @@ function resolveoverlap(map, layer, idlist, entities)
     local e = entities[id]
     return coolision.newAxisBox(0, e.x - e.wx, e.y + e.wx, e.wx * 2, e.wy * 2)
   end
-  local boxes = fun.fmap(ent2box, idlist)
+  local boxes = {}
+  for id, _ in pairs(idlist) do
+    boxes[id] = ent2box(id)
+  end
+  --local boxes = fun.fmap(ent2box, idlist)
   local cool = coolision.collisiondetect(boxes, 1, 0)
   for ida, subcool in pairs(cool) do
     for _, idb in pairs(subcool) do
@@ -346,8 +350,23 @@ function resolveoverlap(map, layer, idlist, entities)
       -- Find overlap
       local ov = ((entities[lowid].x + entities[lowid].wx)
                   - (entities[highid].x - entities[highid].wx))
-      mapMoveEntity(map, layer, entities[lowid], -ov * 0.5, 0)
-      mapMoveEntity(map, layer, entities[highid], ov * 0.5, 0)
+      local ml = math.abs(entities[lowid].vx) > 1
+      local mh = math.abs(entities[highid].vx) > 1
+      -- Expel whoever is moving
+      -- If nobody or both are, move according to weightin scheme
+      if ml and not mh then
+        mapMoveEntity(map, layer, entities[lowid], -ov, 0)
+      elseif not ml and mh then
+        mapMoveEntity(map, layer, entities[highid], ov, 0)
+      else
+        local wl = idlist[lowid]
+        local wh = idlist[highid]
+        local sum = wl + wh
+        wl = sum > 0 and wl or 1
+        wh = sum > 0 and wh or 1
+        mapMoveEntity(map, layer, entities[lowid], -ov * wh / sum , 0)
+        mapMoveEntity(map, layer, entities[highid], ov * wl / sum, 0)
+      end
     end
   end
 end

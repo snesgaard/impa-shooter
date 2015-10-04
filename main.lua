@@ -130,29 +130,20 @@ function love.load()
   loaders.mobolee(gamedata)
   loaders.light(gamedata)
   loaders.shalltear(gamedata)
-  -- Create actors and collect ids
-  --gamedata.init(gamedata, actor.impa, 200, -100)
-  gamedata.init(gamedata, actor.statsui)
-  gamedata.game.playerid = gamedata.init(gamedata, actor.shalltear, 100, -100)
-  gamedata.init(gamedata, actor.mobolee, 400, -100)
-  gamedata.init(gamedata, actor.mobolee, 500, -100)
   -- Canvas
   basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height
   )
   basecanvas:setFilter(filter, filter)
-  pixeltiletex = gfx.newImage("res/pixeltile.png")
-  pixeltiletex:setWrap('repeat', 'repeat')
-  pixelquad = love.graphics.newQuad(
-      0, 0, gamedata.visual.width, gamedata.visual.height,
-      pixeltiletex:getWidth(), pixeltiletex:getHeight()
-    )
   light.testsetup(gamedata)
-  -- test sprite
-  astra = newAnimation(
-    love.graphics.newImage("res/astramage.png"), 48, 48, 0.25, 4
-  )
-  valiant = gfx.newImage("res/valiantastra.png")
+  -- Create actors and collect ids
+  --[[
+  gamedata.init(gamedata, actor.statsui)
+  gamedata.game.playerid = gamedata.init(gamedata, actor.shalltear, 100, -100)
+  gamedata.init(gamedata, actor.mobolee, 400, -100)
+  gamedata.init(gamedata, actor.mobolee, 500, -100)
+  ]]--
+  gameco = coroutine.create(game.init)
 end
 
 function love.update(dt)
@@ -161,51 +152,7 @@ function love.update(dt)
   -- Update time
   gamedata.system.time = love.timer.getTime()
   gamedata.system.dt = dt
-  -- Move all entities
-  local tmap = gamedata.tilemaps[gamedata.game.activelevel]
-  for _, e in pairs(gamedata.entity) do
-    mapAdvanceEntity(tmap, "game", e, dt)
-  end
-  resolveoverlap(tmap, "game", gamedata.entity2entity, gamedata.entity)
-  -- Sync all hitboxes to entities, if possible
-  for id, synctable in pairs(gamedata.hitboxsync) do
-    -- Assume that entity is set, otherwise provoke an error
-    local entity = gamedata.entity[id]
-    local face = gamedata.face[id]
-    local s
-    if face == "right" then s = 1 else s = -1 end
-    for boxid, syncoff in pairs(synctable) do
-      local box = gamedata.hitbox[id][boxid]
-      box.x = syncoff.x * s - 0.5 * (1 - s) * box.w + entity.x
-      box.y = syncoff.y + entity.y
-    end
-  end
-  -- Now hit detection on all registered hitboxes
-  local seekers, hailers = coolision.sortcollisiongroups(gamedata.hitbox)
-  if drawboxes then drawhailers = hailers end
-  coolision.docollisiongroups(seekers, hailers)
-  -- Update weapon data
-  rifle.updatemultipliers(gamedata)
-  -- Update stamina: HACK Rate is not real
-  local rate = 1
-  for id, usedstam in pairs(gamedata.usedstamina) do
-    local nextstam = usedstam - rate * gamedata.system.dt
-    if nextstam < 0 then
-      gamedata.usedstamina[id] = nil
-    else
-      gamedata.usedstamina[id] = nextstam
-    end
-  end
-  -- Update control state for all actors
-  for id, cont in pairs(gamedata.control) do
-    coroutine.resume(cont, gamedata, id)
-  end
-  for id, clean in pairs(gamedata.cleanup) do
-    clean(gamedata, id)
-    gamedata.unregister(id)
-  end
-  gamedata.cleanup = {}
-  astra:update(dt)
+  coroutine.resume(gameco, gamedata)
 end
 
 function love.draw()
@@ -243,8 +190,6 @@ function love.draw()
   for _, t in ipairs(sorted_drawers) do
     coroutine.resume(t.co, gamedata, t.id)
   end
-  astra:draw(20, -80, 0, 1, -1)
-  gfx.draw(valiant, 200, -128, 0, 1, -1)
   -- Draw boxes if needed
   if drawboxes then
     for _, subhailer in pairs(drawhailers) do
