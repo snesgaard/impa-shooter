@@ -17,7 +17,7 @@ local function mainlogic(gamedata)
   for _, e in pairs(gamedata.entity) do
     mapAdvanceEntity(tmap, "game", e, gamedata.system.dt)
   end
-  resolveoverlap(tmap, "game", gamedata.entity2entity, gamedata.entity)
+  -- resolveoverlap(tmap, "game", gamedata.entity2entity, gamedata.entity)
   -- Sync all hitboxes to entities, if possible
   for id, synctable in pairs(gamedata.hitboxsync) do
     -- Assume that entity is set, otherwise provoke an error
@@ -63,9 +63,10 @@ function game.init(gamedata)
   -- Do soft initialization here
   gamedata.init(gamedata, actor.statsui)
   gamedata.game.playerid = gamedata.init(gamedata, actor.shalltear, 100, -100)
-  gamedata.init(gamedata, actor.mobolee, 400, -100)
-  gamedata.init(gamedata, actor.mobolee, 500, -100)
-  gamedata.init(gamedata, actor.mobolee, 600, -100)
+  --gamedata.init(gamedata, actor.mobolee, 600, -100)
+  gamedata.moboleemaster = gamedata.init(
+    gamedata, actor.moboleemaster, 100, 600, -110, -100, 30, 1
+  )
   return game.run(gamedata)
 end
 

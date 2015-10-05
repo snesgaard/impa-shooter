@@ -12,6 +12,7 @@ require ("actors/box")
 require ("actors/impa")
 require ("actors/mobolee")
 require ("actors/shalltear")
+require ("actors/moboleemaster")
 require "statsui"
 require ("modules/functional")
 require "light"

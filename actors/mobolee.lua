@@ -24,7 +24,7 @@ local psearch = {
 }
 local followthreshold = 2
 local phit = {
-  w = 30, h = 30
+  w = 30, h = 60
 }
 
 loaders.mobolee = function(gamedata)
@@ -78,11 +78,18 @@ idle.run = function(gamedata, id)
   coroutine.yield()
   local t = gamedata.target[id]
   local h = gamedata.message[id].hit
+  local rb = gamedata.message[id].rblocked
+  local lb = gamedata.message[id].lblocked
+  gamedata.message[id].rblocked = nil
+  gamedata.message[id].lblocked = nil
   if h then
     if hit.ready(gamedata, id) then return hit.run(gamedata, id) end
     gamedata.message[id].hit = nil
   end
-  if t and not h then return follow.begin(gamedata, id) end
+  local e = gamedata.entity[id]
+  if t and (t.x > e.x and not rb or t.x < e.x and not lb) then
+    return follow.begin(gamedata, id)
+  end
   return idle.run(gamedata, id)
 end
 
@@ -96,10 +103,17 @@ follow.run = function(gamedata, id)
   if h then
     if hit.ready(gamedata, id) then return hit.run(gamedata, id) end
     gamedata.message[id].hit = nil
-    return idle.begin(gamedata, id)
+    --return idle.begin(gamedata, id)
   end
   local t = gamedata.target[id]
-  if not t then return idle.begin(gamedata, id) end
+  local rb = gamedata.message[id].rblocked
+  local lb = gamedata.message[id].lblocked
+  gamedata.message[id].rblocked = nil
+  gamedata.message[id].lblocked = nil
+  local e = gamedata.entity[id]
+  if not t or (t.x > e.x and rb) or (t.x < e.x and lb) then
+    return idle.begin(gamedata, id)
+  end
   gamedata.target[id] = nil
   local entity = gamedata.entity[id]
   local s = t.x - entity.x
@@ -169,6 +183,10 @@ dead.run = function(gamedata, id)
   -- Remove hitbox system
   gamedata.hitbox[id] = nil
   gamedata.hitboxsync[id] = nil
+  -- Optional fun mode
+  if moboleemaster and gamedata.moboleemaster > -1 then
+    moboleemaster.rip(gamedata, gamedata.moboleemaster, id)
+  end
   local timer = misc.createtimer(gamedata.system.time, dyingtime)
   gamedata.visual.drawers[id] = dead.drawer(gamedata, id)
   while timer(gamedata.system.time) do
@@ -269,7 +287,7 @@ actor.mobolee = function(gamedata, id, x, y)
       psearch.h, nil, targettype,
       function(this, other)
         local px = other.x + other.w * 0.5
-        if math.abs(px - this.x - this.w * 0.5) > phit.w * 0.5 then
+        if math.abs(px - this.x - this.w * 0.5) > 10 then
           gamedata.target[id] = {
             x = other.x + other.w * 0.5, y = other.y - other.h * 0.5
           }
@@ -284,6 +302,18 @@ actor.mobolee = function(gamedata, id, x, y)
         }
       end
     ),
+    antibunch = coolision.newAxisBox(
+      id, x, y, 4, 16, nil, gamedata.hitboxtypes.enemybody,
+      function(this, other)
+        local tx = this.x + this.w * 0.5
+        local ox = other.x + other.w * 0.5
+        if tx < ox and this.id ~= other.id then
+          gamedata.message[id].rblocked = true
+        elseif tx > ox and this.id ~= other.id then
+          gamedata.message[id].lblocked = true
+        end
+      end
+    ),
     body = coolision.newAxisBox(
       id, x, y, w * 2, h * 2, gamedata.hitboxtypes.enemybody
     )
@@ -294,12 +324,16 @@ actor.mobolee = function(gamedata, id, x, y)
   gamedata.health[id] = 8
   gamedata.damage[id] = 0
   gamedata.hitbox[id].body.applydamage = function(otherid, x, y, damage)
-    local d = combat.dodamage(gamedata, id, damage)
+    local e = gamedata.entity[id]
+    local f = gamedata.face[id] == "right" and 1 or -1
+    local s = (x - e.x) * f > 0 and 1 or 0
+    local d = combat.dodamage(gamedata, id, damage, s)
     return d
   end
   gamedata.hitboxsync[id] = {
     playersearch = {x = -psearch.w * 0.5, y = psearch.h * 0.5},
     playerhit = {x = -phit.w * 0.5, y = phit.h * 0.5},
+    antibunch = {x = -2, y = 8},
     body = {x = -w, y = h},
   }
 end

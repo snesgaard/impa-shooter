@@ -257,6 +257,7 @@ function evade.run(gamedata, id)
   local vx = dx * evade.dist / evade.time
   local vy = 0
   gamedata.entity2entity[id] = nil
+  gamedata.invincibility[id] = gamedata.invincibility[id] + 1
   control.drawer.main = misc.createrepeatdrawer(newAnimation(
     gamedata.visual.images[ims.evade], 48, 48, 100, 1
   ))
@@ -267,6 +268,7 @@ function evade.run(gamedata, id)
     gamedata.entity[id].vy = vy
     coroutine.yield()
   end
+  gamedata.invincibility[id] = gamedata.invincibility[id] - 1
   gamedata.entity[id].vx = 0
   gamedata.entity[id].vy = 0
   gamedata.entity2entity[id] = 0
@@ -415,5 +417,5 @@ function actor.shalltear(gamedata, id, x, y)
   gamedata.health[id] = 8
   gamedata.reduce[id] = 1
   gamedata.soak[id] = 0
-  gamedata.invincibility[id] = false
+  gamedata.invincibility[id] = 0
 end

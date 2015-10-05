@@ -93,6 +93,11 @@
   ground = {},
   -- Input related data
   latch = {},
+  -- Horde mode data
+  moboleemaster = -1,
+  mobolees = {},
+  activemobolee = 0,
+  score = 0,
 }
 
 local seed = 1
