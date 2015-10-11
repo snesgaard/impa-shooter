@@ -31,7 +31,7 @@ local render = {}
 
 function render.ui(gamedata, id)
   gfx.print(
-    gamedata.score, gamedata.visual.width / gamedata.visual.scale - 20, 10
+    gamedata.score, gamedata.visual.width / gamedata.visual.scale - 20, 0
   )
   return render.ui(coroutine.yield())
 end

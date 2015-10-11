@@ -12,6 +12,8 @@ local ims = {
   clawarec = impather("clawa_recov.png"),
   clawb = impather("clawb.png"),
   clawbrec = impather("clawb_recov.png"),
+  clawcpre = impather("clawc_pre.png"),
+  clawc = impather("clawc.png"),
   move = impather("idle.png"), --Placeholder sprite
   idle = impather("idle.png"),
   run = impather("run3.png"),
@@ -63,6 +65,7 @@ local normal = {}
 local evade = {}
 local clawa = {}
 local clawb = {}
+local clawc = {}
 
 local arialanimation = {}
 arialanimation.midairtime = 0.1
@@ -324,7 +327,7 @@ end
 
 clawb.time = 0.2
 clawb.frames = 4
-clawb.dist = 10
+clawb.dist = 0
 clawb.recovtime = 0.3
 clawb.recovframes = 3
 function clawb.run(gamedata, id)
@@ -356,10 +359,35 @@ function clawb.run(gamedata, id)
       break
     elseif input.ispressed(gamedata, "f") then
       input.latch(gamedata, "f")
-      return clawa.run(gamedata, id)
+      return clawc.run(gamedata, id)
     end
     coroutine.yield()
   end
+  gamedata.message[id].beast = gamedata.system.time
+  return normal.begin(gamedata, id)
+end
+
+-- Slash time
+clawc.pretime = 0.1
+clawc.preframes = 3
+clawc.time = 0.3
+clawc.frames = 4
+--clawc.recovtime = 0.3
+--clawc.recovframes = 7
+function clawc.run(gamedata, id)
+
+  local ft = clawc.time / clawc.frames
+  control.drawer.main = misc.createoneshotdrawer(
+    newAnimation(
+      gamedata.visual.images[ims.clawc], 96, 48, ft, clawc.frames
+    )
+  )
+  gamedata.entity[id].vx = 0
+  turn(gamedata, id)
+  combat.activeboxsequence(
+    gamedata, id, "hit", 4, -2, 17, 51, 29, ft, ft * 2, clawc.time
+  )
+
   gamedata.message[id].beast = gamedata.system.time
   return normal.begin(gamedata, id)
 end

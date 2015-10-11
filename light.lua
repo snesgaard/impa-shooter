@@ -42,7 +42,7 @@ light.draw = function(gamedata, canvas, x, y)
     shader:send("orthodir", unpack(light.ortho.dir))
     shader:send("orthocoeffecient", unpack(light.ortho.coeffecient))
   end
-  gfx.draw(basecanvas, 0, 0, 0, gamedata.visual.scale)
+  gfx.draw(canvas, 0, 0, 0, gamedata.visual.scale)
   gfx.setShader()
 end
 

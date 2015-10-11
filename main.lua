@@ -132,10 +132,10 @@ function love.load()
   loaders.light(gamedata)
   loaders.shalltear(gamedata)
   -- Canvas
-  basecanvas = gfx.newCanvas(
-    gamedata.visual.width, gamedata.visual.height
-  )
-  basecanvas:setFilter(filter, filter)
+  --basecanvas = gfx.newCanvas(
+  --  gamedata.visual.width, gamedata.visual.height
+  --)
+  --basecanvas:setFilter(filter, filter)
   light.testsetup(gamedata)
   -- Create actors and collect ids
   --[[

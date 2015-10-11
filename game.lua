@@ -1,3 +1,79 @@
+-- Defines
+local roundtime = 30.0
+
+-- Rendering function
+local render = {}
+function render.normal()
+  --love.graphics.scale(gamedata.visual.scale)
+  local basecanvas = gamedata.visual.basecanvas
+  basecanvas:clear()
+  gfx.setCanvas(basecanvas)
+  gfx.setColor(70, 70, 120)
+  -- Setup camera translation
+  gfx.rectangle("fill", 0, 0, gamedata.visual.width, gamedata.visual.height)
+  gfx.setColor(255, 255, 255)
+  local tmap = gamedata.tilemaps[gamedata.game.activelevel]
+  local pentity = gamedata.entity[gamedata.game.playerid]
+  local x, y = calculatecameracenter(tmap, pentity)
+  love.graphics.translate(x, y)
+  -- Draw level tilemap
+  coroutine.resume(gamedata.visual.leveldraw, gamedata, gamedata.game.activelevel)
+  -- Setup actor drawing transforms
+  love.graphics.scale(1, -1)
+  -- First sort all actors according to layers
+  local sorted_drawers = {}
+  for id, d in pairs(gamedata.visual.drawers) do
+    local type = gamedata.actor[id]
+    local order = gamedata.visual.draworder[type] or -1
+    table.insert(sorted_drawers, {ord = order, id = id, co = d})
+  end
+  -- Sort according to layer or id
+  table.sort(sorted_drawers, function(t1, t2)
+    if t1.ord ~= t2.ord then
+      return t1.ord < t2.ord
+    else
+      return t1.id < t2.id
+    end
+  end)
+  -- Okay run drawing after sorting
+  for _, t in ipairs(sorted_drawers) do
+    coroutine.resume(t.co, gamedata, t.id)
+  end
+  -- Draw boxes if needed
+  --[[
+  if drawboxes then
+    for _, subhailer in pairs(drawhailers) do
+      for _, box in pairs(subhailer) do
+        drawhitbox(box)
+      end
+    end
+  end
+  ]]--
+  love.graphics.setColor(255, 255, 255)
+  -- Reset transforms
+  love.graphics.origin()
+  gfx.setCanvas()
+  light.draw(gamedata, basecanvas, x, y)
+  -- Introduce normalize screen coordinates for UI drawing
+  -- love.graphics.scale(gamedata.visual.width, gamedata.visual.width)
+  love.graphics.scale(gamedata.visual.scale)
+  for id, d in pairs(gamedata.visual.uidrawers) do
+    coroutine.resume(d, gamedata, id)
+  end
+  -- Finally draw the time remaining
+  if gamedata.timeleft > roundtime * 0.5 then
+    gfx.setColor(255, 255, 255)
+  elseif gamedata.timeleft > 10 then
+    gfx.setColor(255, 255, 0)
+  else
+    gfx.setColor(255, 0, 0)
+  end
+  gfx.print(
+    string.format("%02d", gamedata.timeleft),
+    gamedata.visual.width / gamedata.visual.scale * 0.5, 0
+  )
+end
+
 -- gameplay related fucitonality
 game = {}
 game.onground = function(gamedata, id)
@@ -67,6 +143,12 @@ function game.init(gamedata)
   gamedata.moboleemaster = gamedata.init(
     gamedata, actor.moboleemaster, 100, 600, -110, -100, 30, 1
   )
+  gamedata.visual.basecanvas = gfx.newCanvas(
+    gamedata.visual.width, gamedata.visual.height
+  )
+  gamedata.visual.basecanvas:setFilter("nearest", "nearest")
+  love.draw = render.normal
+  gamedata.timeleft = roundtime
   return game.run(gamedata)
 end
 
@@ -76,6 +158,7 @@ function game.run(gamedata)
   local pid = gamedata.game.playerid
   local phealth = gamedata.health[pid]
   local pdmg = gamedata.damage[pid] or 0
+  gamedata.timeleft = math.max(0, gamedata.timeleft - gamedata.system.dt)
   if not (phealth > pdmg)  then
     --return game.done(coroutine.yield())
     gamedata.softreset(gamedata)
@@ -97,4 +180,5 @@ function game.done(gamedata, playerid)
     return game.done(coroutine.yield())
   end
 end
+
 return game

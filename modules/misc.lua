@@ -70,6 +70,10 @@ misc.createtimer = function(start, duration)
     return time - start < duration
   end
 end
+misc.wait = function(gamedata, duration)
+  local timer = misc.createtimer(gamedata.system.time, duration)
+  while timer(gamedata.system.time) do coroutine.yield() end
+end
 misc.createhbsync = function(hitboxid, x, y)
   local f
   f = function(gamedata, id)

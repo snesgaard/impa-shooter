@@ -31,6 +31,7 @@
     meshes = {},
     shaders = {},
     particles = {},
+    basecanvas = 0,
     width = 0,
     height = 0,
     aspect = 0,
@@ -98,6 +99,7 @@
   mobolees = {},
   activemobolee = 0,
   score = 0,
+  timeleft = 0,
 }
 
 local seed = 1
