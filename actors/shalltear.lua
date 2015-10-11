@@ -12,7 +12,6 @@ local ims = {
   clawarec = impather("clawa_recov.png"),
   clawb = impather("clawb.png"),
   clawbrec = impather("clawb_recov.png"),
-  clawcpre = impather("clawc_pre.png"),
   clawc = impather("clawc.png"),
   move = impather("idle.png"), --Placeholder sprite
   idle = impather("idle.png"),
