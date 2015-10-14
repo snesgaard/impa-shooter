@@ -13,6 +13,7 @@ local ims = {
   clawb = impather("clawb.png"),
   clawbrec = impather("clawb_recov.png"),
   clawc = impather("clawc.png"),
+  clawcrec = impather("clawc_recov.png"),
   move = impather("idle.png"), --Placeholder sprite
   idle = impather("idle.png"),
   run = impather("run3.png"),
@@ -367,12 +368,10 @@ function clawb.run(gamedata, id)
 end
 
 -- Slash time
-clawc.pretime = 0.1
-clawc.preframes = 3
 clawc.time = 0.3
 clawc.frames = 4
---clawc.recovtime = 0.3
---clawc.recovframes = 7
+clawc.recovtime = 0.3
+clawc.recovframes = 3
 function clawc.run(gamedata, id)
 
   local ft = clawc.time / clawc.frames
@@ -387,6 +386,20 @@ function clawc.run(gamedata, id)
     gamedata, id, "hit", 4, -2, 17, 51, 29, ft, ft * 2, clawc.time
   )
 
+  control.drawer.main = misc.createoneshotdrawer(
+    newAnimation(
+      gamedata.visual.images[ims.clawcrec], 96, 48,
+      clawc.recovtime / clawc.recovframes, clawc.recovframes
+    )
+  )
+
+  local recovtimer = misc.createtimer(gamedata.system.time, clawc.recovtime)
+  while recovtimer(gamedata.system.time) do
+    if combatcancel(gamedata, id) then
+      break
+    end
+    coroutine.yield()
+  end
   gamedata.message[id].beast = gamedata.system.time
   return normal.begin(gamedata, id)
 end
