@@ -1,5 +1,5 @@
 -- Defines
-local roundtime = 30
+local roundtime = 60
 --local roundtime = 1.0
 
 local inputhandler = {}
@@ -168,7 +168,7 @@ function game.init(gamedata)
   gamedata.game.playerid = gamedata.init(gamedata, actor.shalltear, 100, -100)
   --gamedata.init(gamedata, actor.mobolee, 600, -100)
   gamedata.moboleemaster = gamedata.init(
-    gamedata, actor.moboleemaster, 100, 600, -110, -100, 30, 1
+    gamedata, actor.moboleemaster, 100, 600, -110, -100, 30, 0.3
   )
   gamedata.visual.basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height

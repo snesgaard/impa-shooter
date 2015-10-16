@@ -380,7 +380,7 @@ end
 -- Slash time
 clawc.time = 0.2
 clawc.frames = 4
-clawc.recovtime = 0.2
+clawc.recovtime = 0.3
 clawc.recovframes = 3
 function clawc.run(gamedata, id)
 
@@ -393,7 +393,7 @@ function clawc.run(gamedata, id)
   gamedata.entity[id].vx = 0
   turn(gamedata, id)
   combat.activeboxsequence(
-    gamedata, id, "hit", 3, -2, 17, 51, 29, ft, ft * 2, clawc.time
+    gamedata, id, "hit", 4, -2, 17, 51, 29, ft, ft * 2, clawc.time
   )
 
   control.drawer.main = misc.createoneshotdrawer(
