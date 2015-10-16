@@ -303,13 +303,19 @@ actor.mobolee = function(gamedata, id, x, y)
       end
     ),
     antibunch = coolision.newAxisBox(
-      id, x, y, 4, 16, nil, gamedata.hitboxtypes.enemybody,
+      id, x, y, 8, 16, nil, gamedata.hitboxtypes.enemybody,
       function(this, other)
         local tx = this.x + this.w * 0.5
         local ox = other.x + other.w * 0.5
-        if tx < ox and this.id ~= other.id then
+        local d = math.abs(tx - ox)
+        if d > 1 then
+          if tx < ox and this.id ~= other.id then
+            gamedata.message[id].rblocked = true
+          elseif tx > ox and this.id ~= other.id then
+            gamedata.message[id].lblocked = true
+          end
+        elseif this.id < other.id then
           gamedata.message[id].rblocked = true
-        elseif tx > ox and this.id ~= other.id then
           gamedata.message[id].lblocked = true
         end
       end
@@ -333,7 +339,7 @@ actor.mobolee = function(gamedata, id, x, y)
   gamedata.hitboxsync[id] = {
     playersearch = {x = -psearch.w * 0.5, y = psearch.h * 0.5},
     playerhit = {x = -phit.w * 0.5, y = phit.h * 0.5},
-    antibunch = {x = -2, y = 8},
+    antibunch = {x = -4, y = 8},
     body = {x = -w, y = h},
   }
 end

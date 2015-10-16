@@ -123,6 +123,7 @@ local function mainlogic(gamedata)
   local seekers, hailers = coolision.sortcollisiongroups(gamedata.hitbox)
   -- Should be fixed
   -- if drawboxes then drawhailers = hailers end
+  print("run")
   coolision.docollisiongroups(seekers, hailers)
   -- Update stamina: HACK Rate is not real
   local rate = 1
