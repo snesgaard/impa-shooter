@@ -241,7 +241,7 @@ function evade.drawer(gamedata, id, vx)
   end
   control.drawer.evade = nil
 end
-function evade.run(gamedata, id)
+function evade.run(gamedata, id, nexthit)
   -- Determine evade direction
   local dx = (
     (input.ispressed(gamedata, "left") and -1 or 0)
@@ -276,6 +276,10 @@ function evade.run(gamedata, id)
   gamedata.entity[id].vy = 0
   gamedata.entity2entity[id] = 0
   gamedata.message[id].beast = gamedata.system.time
+  if nexthit and input.ispressed(gamedata, "f") then
+    input.latch(gamedata, "f")
+    return nexthit(gamedata, id)
+  end
   return normal.begin(gamedata, id)
 end
 
@@ -313,7 +317,10 @@ function clawa.run(gamedata, id)
   local recovtimer = misc.createtimer(gamedata.system.time, clawa.recovtime)
   while recovtimer(gamedata.system.time) do
 
-    if combatcancel(gamedata, id) then
+    if input.ispressed(gamedata, evadekey) then
+      input.latch(gamedata, evadekey)
+      return evade.run(gamedata, id, clawb.run)
+    elseif combatcancel(gamedata, id) then
       break
     elseif input.ispressed(gamedata, "f") then
       input.latch(gamedata, "f")
@@ -355,7 +362,10 @@ function clawb.run(gamedata, id)
   local recovtimer = misc.createtimer(gamedata.system.time, clawb.recovtime)
   while recovtimer(gamedata.system.time) do
 
-    if combatcancel(gamedata, id) then
+    if input.ispressed(gamedata, evadekey) then
+      input.latch(gamedata, evadekey)
+      return evade.run(gamedata, id, clawc.run)
+    elseif combatcancel(gamedata, id) then
       break
     elseif input.ispressed(gamedata, "f") then
       input.latch(gamedata, "f")
@@ -368,9 +378,9 @@ function clawb.run(gamedata, id)
 end
 
 -- Slash time
-clawc.time = 0.3
+clawc.time = 0.2
 clawc.frames = 4
-clawc.recovtime = 0.3
+clawc.recovtime = 0.2
 clawc.recovframes = 3
 function clawc.run(gamedata, id)
 
@@ -383,7 +393,7 @@ function clawc.run(gamedata, id)
   gamedata.entity[id].vx = 0
   turn(gamedata, id)
   combat.activeboxsequence(
-    gamedata, id, "hit", 4, -2, 17, 51, 29, ft, ft * 2, clawc.time
+    gamedata, id, "hit", 3, -2, 17, 51, 29, ft, ft * 2, clawc.time
   )
 
   control.drawer.main = misc.createoneshotdrawer(
@@ -394,14 +404,19 @@ function clawc.run(gamedata, id)
   )
 
   local recovtimer = misc.createtimer(gamedata.system.time, clawc.recovtime)
+  local nextstate = normal.begin
   while recovtimer(gamedata.system.time) do
     if combatcancel(gamedata, id) then
+      nextstate = normal.begin
       break
+    elseif input.ispressed(gamedata, "f") then
+      input.latch(gamedata, "f")
+      nextstate = clawa.run
     end
     coroutine.yield()
   end
   gamedata.message[id].beast = gamedata.system.time
-  return normal.begin(gamedata, id)
+  return nextstate(gamedata, id)
 end
 
 control.drawer = {}

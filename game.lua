@@ -1,5 +1,17 @@
 -- Defines
-local roundtime = 30.0
+local roundtime = 30
+--local roundtime = 1.0
+
+local inputhandler = {}
+
+function inputhandler.keypressed(key, isrepeat)
+  gamedata.system.pressed[key] = gamedata.system.time
+end
+
+function inputhandler.keyreleased(key, isrepeat)
+  gamedata.system.released[key] = gamedata.system.time
+end
+
 
 -- Rendering function
 local render = {}
@@ -69,7 +81,7 @@ function render.normal()
     gfx.setColor(255, 0, 0)
   end
   gfx.print(
-    string.format("%02d", gamedata.timeleft),
+    string.format("%02d", math.max(0, gamedata.timeleft)),
     gamedata.visual.width / gamedata.visual.scale * 0.5, 0
   )
 end
@@ -112,8 +124,6 @@ local function mainlogic(gamedata)
   -- Should be fixed
   -- if drawboxes then drawhailers = hailers end
   coolision.docollisiongroups(seekers, hailers)
-  -- Update weapon data
-  rifle.updatemultipliers(gamedata)
   -- Update stamina: HACK Rate is not real
   local rate = 1
   for id, usedstam in pairs(gamedata.usedstamina) do
@@ -123,6 +133,23 @@ local function mainlogic(gamedata)
     else
       gamedata.usedstamina[id] = nextstam
     end
+  end
+  -- Update control state for all actors
+  for id, cont in pairs(gamedata.control) do
+    coroutine.resume(cont, gamedata, id)
+  end
+  for id, clean in pairs(gamedata.cleanup) do
+    clean(gamedata, id)
+    gamedata.unregister(id)
+  end
+  gamedata.cleanup = {}
+end
+
+local function donelogic(gamedata)
+  -- Move all entities
+  local tmap = gamedata.tilemaps[gamedata.game.activelevel]
+  for _, e in pairs(gamedata.entity) do
+    mapAdvanceEntity(tmap, "game", e, gamedata.system.dt)
   end
   -- Update control state for all actors
   for id, cont in pairs(gamedata.control) do
@@ -149,6 +176,9 @@ function game.init(gamedata)
   gamedata.visual.basecanvas:setFilter("nearest", "nearest")
   love.draw = render.normal
   gamedata.timeleft = roundtime
+
+  love.keypressed = inputhandler.keypressed
+  love.keyreleased = inputhandler.keyreleased
   return game.run(gamedata)
 end
 
@@ -158,18 +188,27 @@ function game.run(gamedata)
   local pid = gamedata.game.playerid
   local phealth = gamedata.health[pid]
   local pdmg = gamedata.damage[pid] or 0
-  gamedata.timeleft = math.max(0, gamedata.timeleft - gamedata.system.dt)
+  gamedata.timeleft = gamedata.timeleft - gamedata.system.dt
   if not (phealth > pdmg)  then
     --return game.done(coroutine.yield())
     gamedata.softreset(gamedata)
     return game.init(coroutine.yield())
+  elseif gamedata.timeleft < 0 then
+    return game.done.begin(coroutine.yield())
   else
     return game.run(coroutine.yield())
   end
 end
 
-function game.done(gamedata, playerid)
-  mainlogic(gamedata)
+game.done = {}
+local resultuicreator = require "ui/result"
+function game.done.begin(gamedata)
+  gamedata.init(gamedata, resultuicreator)
+  return game.done.run(gamedata)
+end
+
+function game.done.run(gamedata, resultui)
+  donelogic(gamedata)
   -- Game logic here
   if player_exit then
     -- throw exit event
@@ -177,7 +216,7 @@ function game.done(gamedata, playerid)
   if player_reset then
     return game.init(coroutine.yield())
   else
-    return game.done(coroutine.yield())
+    return game.done.run(coroutine.yield())
   end
 end
 

@@ -326,8 +326,8 @@ actor.mobolee = function(gamedata, id, x, y)
   gamedata.hitbox[id].body.applydamage = function(otherid, x, y, damage)
     local e = gamedata.entity[id]
     local f = gamedata.face[id] == "right" and 1 or -1
-    local s = (x - e.x) * f > 0 and 1 or 0
-    local d = combat.dodamage(gamedata, id, damage, s)
+    --local s = (x - e.x) * f > 0 and 1 or 0
+    local d = combat.dodamage(gamedata, id, damage)
     return d
   end
   gamedata.hitboxsync[id] = {
