@@ -123,7 +123,6 @@ local function mainlogic(gamedata)
   local seekers, hailers = coolision.sortcollisiongroups(gamedata.hitbox)
   -- Should be fixed
   -- if drawboxes then drawhailers = hailers end
-  print("run")
   coolision.docollisiongroups(seekers, hailers)
   -- Update stamina: HACK Rate is not real
   local rate = 1
@@ -139,6 +138,9 @@ local function mainlogic(gamedata)
   for id, cont in pairs(gamedata.control) do
     coroutine.resume(cont, gamedata, id)
   end
+  -- Align lighyt with player
+  gamedata.light.point.pos[1][1] = gamedata.entity[gamedata.game.playerid].x
+  gamedata.light.point.pos[1][2] = gamedata.entity[gamedata.game.playerid].y
   for id, clean in pairs(gamedata.cleanup) do
     clean(gamedata, id)
     gamedata.unregister(id)
