@@ -139,8 +139,8 @@ local function mainlogic(gamedata)
     coroutine.resume(cont, gamedata, id)
   end
   -- Align lighyt with player
-  gamedata.light.point.pos[1][1] = gamedata.entity[gamedata.game.playerid].x
-  gamedata.light.point.pos[1][2] = gamedata.entity[gamedata.game.playerid].y
+  --gamedata.light.point.pos[1][1] = gamedata.entity[gamedata.game.playerid].x
+  --gamedata.light.point.pos[1][2] = gamedata.entity[gamedata.game.playerid].y
   for id, clean in pairs(gamedata.cleanup) do
     clean(gamedata, id)
     gamedata.unregister(id)
@@ -189,14 +189,16 @@ function game.run(gamedata)
   -- Main game logic here
   mainlogic(gamedata)
   local pid = gamedata.game.playerid
-  local phealth = gamedata.health[pid]
+  local phealth = gamedata.health[pid] or 0
   local pdmg = gamedata.damage[pid] or 0
   gamedata.timeleft = gamedata.timeleft - gamedata.system.dt
+  --[[
   if not (phealth > pdmg)  then
     --return game.done(coroutine.yield())
-    gamedata.softreset(gamedata)
+    -gamedata.softreset(gamedata)
     return game.init(coroutine.yield())
-  elseif gamedata.timeleft < 0 then
+  --]]
+  if gamedata.timeleft < 0 or phealth <= pdmg then
     return game.done.begin(coroutine.yield())
   else
     return game.run(coroutine.yield())

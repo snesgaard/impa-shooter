@@ -26,6 +26,7 @@ local ims = {
   beastdescend = impather("beastdescend.png"),
   beastmidair = impather("beastmidair.png"),
   beastascend = impather("beastascend.png"),
+  dead = impather("dead.png")
 }
 
 local w = 6
@@ -62,6 +63,7 @@ end
 
 local control = {}
 local normal = {}
+local dead = {}
 local evade = {}
 local clawa = {}
 local clawb = {}
@@ -201,6 +203,20 @@ function normal.run(gamedata, id)
     return clawa.run(gamedata, id)
   end
   return normal.run(gamedata, id)
+end
+
+function dead.begin(gamedata, id)
+  control.drawer.main = misc.createoneshotdrawer(newAnimation(
+    gamedata.visual.images[ims.dead], 48, 48, 0.2, 3
+  ))
+  gamedata.hitbox[id] = {}
+  gamedata.hitboxsync[id] = {}
+  gamedata.entity[id].vx = 0
+  return dead.run(gamedata, id)
+end
+
+function dead.run(gamedata, id)
+  return dead.run(coroutine.yield())
 end
 
 evade.time = 0.1
@@ -441,6 +457,9 @@ function control.run(gamedata, id, co)
   --end
   coroutine.resume(co, gamedata, id)
   coroutine.yield()
+  local h = gamedata.health[id] or 0
+  local dmg = gamedata.damage[id] or 0
+  if h <= dmg then return dead.begin(gamedata, id) end
   return control.run(gamedata, id, co)
 end
 
@@ -452,8 +471,6 @@ function actor.shalltear(gamedata, id, x, y)
       gamedata.ground[id] = gamedata.system.time
     end
   end
-  gamedata.entity2entity[id] = id
-  gamedata.entity2terrain[id] = id
   gamedata.actor[id] = "player"
   gamedata.face[id] = "right"
   gamedata.message[id] = {}
@@ -468,7 +485,6 @@ function actor.shalltear(gamedata, id, x, y)
   gamedata.hitboxsync[id] = {
     body = {x = -w, y = h}
   }
-  -- gamedata.health[id] = 8
   gamedata.health[id] = 8
   gamedata.reduce[id] = 1
   gamedata.soak[id] = 0
