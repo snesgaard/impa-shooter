@@ -207,7 +207,7 @@ end
 
 function dead.begin(gamedata, id)
   control.drawer.main = misc.createoneshotdrawer(newAnimation(
-    gamedata.visual.images[ims.dead], 48, 48, 0.2, 3
+    gamedata.visual.images[ims.dead], 48, 48, 1.0 / 12.0, 10
   ))
   gamedata.hitbox[id] = {}
   gamedata.hitboxsync[id] = {}
