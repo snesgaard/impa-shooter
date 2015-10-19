@@ -1,4 +1,5 @@
- gamedata = {
+--[[
+gamedata = {
   actor = {}, -- Contains the type of all actors, an actor is garuanted to have an entry here
   cleanup = {}, -- Actors will insert a function which will be used to cleanup
   -- Actor specific data
@@ -17,9 +18,14 @@
   control = {},
   target = {},
   message = {},
-  hitbox = {},
-  hitboxsync = {},
-  hitboxtypes = {},
+  hitbox = {
+    width = {},
+    height = {},
+    x = {},
+    y = {},
+    hail = {},
+    seek = {}
+  },
   -- Graphical data
   visual = {
     scale = 1,
@@ -88,8 +94,6 @@
   -- Level related data
   tilemaps = {},
   entity = {},
-  entity2terrain = {},
-  entity2entity = {},
   face = {},
   ground = {},
   -- Input related data
@@ -140,6 +144,119 @@ function gamedata.softreset(data)
   available_id = {}
   for id, _ in pairs(data.actor) do gamedata.softcleanactor(data, id) end
 end
+]]--
+
+local function createresource(resource)
+  resource.__seed__ = 1
+  resource.__available_id__ = {}
+end
+local function allocid(resource)
+  local available_id = resource.__available_id__
+  local id = available_id[#available_id]
+  if id then
+    available_id[#available_id] = nil
+    return id
+  end
+  local s = resource.__seed__
+  resource.__seed__ = resource.__seed__ + 1
+  return s
+end
+
+local function freeid(resource, id)
+  table.insert(resource.__available_id__, id)
+end
+
+gamedata = {
+  system = {
+    time = 0,
+    dt = 0,
+    pressed = {},
+    released = {},
+  },
+  global = {
+    playerid,
+    level,
+  },
+  visual = {
+    scale = 1,
+    draworder = {},
+    layer = {},
+    basecanvas = 0,
+    width = 0,
+    height = 0,
+    aspect = 0,
+  },
+  resource = {
+    images = {},
+    mesh = {},
+    shaders = {},
+    tilemaps = {},
+  },
+  actor = createresource({
+    claimed = {},
+    -- Geometric infomation
+    x = {},
+    y = {},
+    vx = {},
+    vy = {},
+    width = {},
+    height = {},
+    face = {},
+    -- Combat information
+    health = {},
+    damage = {},
+    stamina = {},
+    maxhealth = {},
+    maxstamina = {},
+    usedstamina = {},
+    staminaregen = {},
+    soak = {},
+    reduce = {},
+    invincibility = {},
+    speed = {},
+    -- Control related scripts
+    control = {},
+    ground = {},
+    -- Input
+    latch = {},
+  }),
+  hitbox = createresource({
+    offx = {},
+    offy = {},
+    width = {},
+    height = {},
+  }),
+  hitboxtypes = {},
+  light = {
+    point = createresource({
+      pos = {},
+      color = {},
+      attenuation = {},
+    }),
+    ortho = createresource({
+      dir = {},
+      color = {},
+      coeffecient = {}
+    }),
+    ambient = {
+      color = {0, 0, 0},
+      coeffecient = 0,
+    }
+  },
+  drawers = {
+    world = createresource({}),
+    ui = createresource({}),
+    particles = createresource({}),
+  },
+  mobolee = {
+    -- Horde mode data
+    master = -1,
+    mobolees = {},
+    activemobolee = 0,
+    score = 0,
+    timeleft = 0,
+  }
+}
 
 local draworder = {
   "box",
@@ -166,4 +283,4 @@ for id, ent in pairs(hitboxtypes) do
   gamedata.hitboxtypes[ent] = id
 end
 
-return gamedata
+return data

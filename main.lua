@@ -101,7 +101,6 @@ function coroutine.resume(...)
 end
 
 local levelpath = "res/rainylevel.lua"
-local levelid
 local leveldraw
 function love.load()
   -- Some global names
@@ -115,17 +114,14 @@ function love.load()
   gamedata.visual.height = love.graphics.getHeight()
   gamedata.visual.aspect = gamedata.visual.width / gamedata.visual.height
   -- Load stage
-  levelid = gamedata.genid()
-  gamedata.tilemaps[levelid] = sti.new(levelpath)
-  misc.setPosSTIMap(gamedata.tilemaps[levelid], 0, 0)
-  gamedata.game.activelevel = levelid
-  local leveldraw = createmapdrawer(levelid)
+  --levelid = gamedata.genid()
+  gamedata.resource.tilemaps[levelpath] = sti.new(levelpath)
+  misc.setPosSTIMap(gamedata.resource.tilemaps[levelpath], 0, 0)
+  gamedata.global.level = levelpath
+  local leveldraw = createmapdrawer(levelpath)
   -- Update map and insert drawer
   gamedata.visual.leveldraw = leveldraw
   -- Load resoures
-  loaders.impa(gamedata)
-  loaders.gunexhaust(gamedata)
-  loaders.bullet(gamedata)
   loaders.statsui(gamedata)
   loaders.mobolee(gamedata)
   loaders.light(gamedata)

@@ -9,7 +9,7 @@ local radius = 3
 
 loaders.statsui = function(gamedata)
   for _, path in pairs(images) do
-    gamedata.visual.images[path] = love.graphics.newImage(path)
+    gamedata.resource.images[path] = love.graphics.newImage(path)
   end
 end
 

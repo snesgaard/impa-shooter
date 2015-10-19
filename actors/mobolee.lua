@@ -29,7 +29,7 @@ local phit = {
 
 loaders.mobolee = function(gamedata)
   for _, path in pairs(ims) do
-    gamedata.visual.images[path] = gamedata.visual.images[path] or loadspriteimage(path)
+    gamedata.resource.images[path] = gamedata.visual.images[path] or loadspriteimage(path)
   end
 end
 
