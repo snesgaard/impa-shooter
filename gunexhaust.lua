@@ -13,7 +13,7 @@ local images = {
 
 loaders.gunexhaust = function(gamedata)
   for _, path in pairs(images) do
-    gamedata.visual.images[path] = love.graphics.newImage(path)
+    gamedata.resource.images[path] = love.graphics.newImage(path)
   end
 end
 
@@ -38,7 +38,7 @@ end
 
 actor.gunexhaust = function(gamedata, id, x, y, face)
   gamedata.actor[id] = type
-  local ims = gamedata.visual.images
+  local ims = gamedata.resource.images
   local anime = newAnimation(ims[images.exhaust], 10, 9, frametime, frames)
   gamedata.visual.drawers[id] = coroutine.create(visual(x, y, face, anime))
 end

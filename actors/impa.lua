@@ -51,7 +51,7 @@ local imagepath = {
 
 loaders.impa = function(gamedata)
   for _, impath in pairs(imagepath) do
-    gamedata.visual.images[impath] = loadspriteimage(impath)
+    gamedata.resource.images[impath] = loadspriteimage(impath)
   end
   loaders.rifle(gamedata)
 end
@@ -356,7 +356,7 @@ end
 
 local create_recursive_control = function(cache)
   local f = function(gamedata, id)
-    local ims = gamedata.visual.images
+    local ims = gamedata.resource.images
     cache.animations = {
       idle = newAnimation(ims[imagepath.idle], 48, 48, 0.2, 4),
       walk = newAnimation(ims[imagepath.walk], 48, 48, 0.15, 4),

@@ -22,9 +22,9 @@ local imagepaths = {
 local particles
 
 loaders.bullet = function(gamedata)
-  local ims = gamedata.visual.images
+  local ims = gamedata.resource.images
   for _, path in pairs(imagepaths) do
-    gamedata.visual.images[path] = love.graphics.newImage(path)
+    gamedata.resource.images[path] = love.graphics.newImage(path)
   end
 end
 
@@ -170,7 +170,7 @@ actor.bullet = function(gamedata, id, x, y, speed, seek, dmg)
   gamedata.bullet.lifetime[id] = lifetime
   gamedata.bullet.damagedealt[id] = nil
   -- Visualizer init
-  local ims = gamedata.visual.images
+  local ims = gamedata.resource.images
   local animations = {
     body = newAnimation(ims[imagepaths.body], 5, 3, 0.05, 0),
     dudimpact = newAnimation(ims[imagepaths.dudimpact], 15, 9, impactframetime, impactframes),

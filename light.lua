@@ -9,20 +9,20 @@ loaders.light = function(gamedata)
   local f = io.open(shaderpath, "rb")
   local fstring = f:read("*all")
   f:close()
-  gamedata.visual.shaders[shaderpath] = gfx.newShader(fstring)
+  gamedata.resource.shaders[shaderpath] = gfx.newShader(fstring)
   local im = gfx.newImage(normalmap)
   im:setFilter("linear", "linear")
   im:setWrap("repeat", "repeat")
-  gamedata.visual.images[normalmap] = im
+  gamedata.resource.images[normalmap] = im
 end
 
 light = {}
 light.draw = function(gamedata, canvas, x, y)
   local light = gamedata.light
   love.graphics.setColor(255, 255, 255)
-  local shader = gamedata.visual.shaders[shaderpath]
+  local shader = gamedata.resource.shaders[shaderpath]
   gfx.setShader(shader)
-  shader:send("normalmap", gamedata.visual.images[normalmap])
+  shader:send("normalmap", gamedata.resource.images[normalmap])
   shader:send("campos", {math.floor(-x), math.floor(y - gamedata.visual.height / gamedata.visual.scale)})
   shader:send("scale", 1.0 / gamedata.visual.scale)
   shader:send("ambientcoeffecient", light.ambient.coeffecient)
@@ -46,16 +46,29 @@ light.draw = function(gamedata, canvas, x, y)
   gfx.setShader()
 end
 
-light.testsetup = function(gamedata)
-  gamedata.light.point.count = 3
-  gamedata.light.point.color = {{1, 0.3, 0.3}, {0, 1, 0}, {0, 0, 1}}
-  gamedata.light.point.pos = {{200, -200, 30}, {400, -200, 60}, {600, -200, 60}}
-  gamedata.light.point.attenuation = {1e-4, 1e-5, 1e-5}
+local function setuppointlight(gamedata, color, pos, atten)
+  local lp = gamedata.light.point
+  local id = allocresource(lp)
+  lp.color[id] = color
+  lp.pos[id] = pos
+  lp.attenuation[id] = atten
+  return id
+end
 
-  gamedata.light.ortho.count = 1
-  gamedata.light.ortho.dir = {{-1, 1, 1}}
-  gamedata.light.ortho.color = {{1, 1, 1}}
-  gamedata.light.ortho.coeffecient = {0.5}
+local function setuportholight(gamedata, color, dir, coeff)
+  local lo = gamedata.light.ortho
+  local id = allocresource(lo)
+  lo.color[id] = color
+  lo.dir[id] = dir
+  lo.coeffecient[id] = coeff
+end
+
+light.testsetup = function(gamedata)
+  setuppointlight(gamedata, {1.0, 0.3, 0.3}, {200, -200, 30}, 1e-4)
+  setuppointlight(gamedata, {0.0, 0.1, 0.0}, {400, -200, 60}, 1e-5)
+  setuppointlight(gamedata, {0.0, 0.0, 0.1}, {600, -200, 60}, 1e-5)
+
+  setuportholight(gamedata, {1, 1, 1}, {-1, 1, 1}, 0.5)
 
   gamedata.light.ambient.coeffecient = 0.5
   gamedata.light.ambient.color = {1, 1, 1}

@@ -47,7 +47,7 @@ local images = {
 
 loaders.rifle = function(gamedata)
   for _, path in pairs(images) do
-    gamedata.visual.images[path] = loadspriteimage(path)
+    gamedata.resource.images[path] = loadspriteimage(path)
   end
 end
 
@@ -62,13 +62,13 @@ fire.run = function(gamedata, id, masterid)
   end
   if game.onground(gamedata, masterid, 0.1) then
     local anime = newAnimation(
-      gamedata.visual.images[images.riflefire], 48, 48, fireframetime,
+      gamedata.resource.images[images.riflefire], 48, 48, fireframetime,
       fireframes
     )
     gamedata.visual.drawers[masterid] = misc.createoneshotdrawer(anime)
   else
     local anime = newAnimation(
-      gamedata.visual.images[images.arialfire], 48, 48, fireframetime,
+      gamedata.resource.images[images.arialfire], 48, 48, fireframetime,
       fireframes
     )
     gamedata.visual.drawers[masterid] = misc.createoneshotdrawer(anime)
@@ -129,13 +129,13 @@ reload.combo = function(gamedata, id, masterid)
   local reloadtimer = misc.createtimer(gamedata.system.time, reloadtime)
   if game.onground(gamedata, masterid, 0.1) then
     local anime = newAnimation(
-      gamedata.visual.images[images.riflecomboreload], 48, 48,
+      gamedata.resource.images[images.riflecomboreload], 48, 48,
       reloadframettime, reloadframes
     )
     gamedata.visual.drawers[masterid] = misc.createbouncedrawer(anime)
   else
     local anime = newAnimation(
-      gamedata.visual.images[images.arialcomboreload], 48, 48,
+      gamedata.resource.images[images.arialcomboreload], 48, 48,
       reloadframettime, reloadframes
     )
     gamedata.visual.drawers[masterid] = misc.createbouncedrawer(anime)
@@ -156,7 +156,7 @@ reload.normal = function(gamedata, id, masterid)
     not game.onground(gamedata, masterid, 0.1) then
       return
   end
-  local im = gamedata.visual.images[images.riflereload]
+  local im = gamedata.resource.images[images.riflereload]
   local anime = newAnimation(im, 48, 48, fullreloadft, fullreloadframes)
   gamedata.visual.drawers[masterid] = misc.createoneshotdrawer(anime)
   local preframes = 10
@@ -179,7 +179,7 @@ local make_uidraw = function(x, y)
   local uidraw = function(gamedata, id)
     while true do
       local riflebullet = newAnimation(
-        gamedata.visual.images[images.riflebullet], bulletframe.w, bulletframe.h,
+        gamedata.resource.images[images.riflebullet], bulletframe.w, bulletframe.h,
         0, 1
       )
       local maxa = gamedata.weapons.maxammo[id]
@@ -285,7 +285,7 @@ actor.riflebullet = function(gamedata, id, x, y, multi, face)
   local basedraw = gamedata.visual.drawers[id]
   local speed = 0
   local lifetime = 0.1
-  local ims = gamedata.visual.images
+  local ims = gamedata.resource.images
   local particles
   if multi > 0 then
     particles = love.graphics.newParticleSystem(ims[images.btrailim], 100)

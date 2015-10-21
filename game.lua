@@ -96,29 +96,28 @@ game.onground = function(gamedata, id)
 end
 
 game.loadimage = function(gamedata, path)
-  gamedata.visual.images[path] = love.graphics.newImage(path)
+  gamedata.resource.images[path] = love.graphics.newImage(path)
 end
 
 local function mainlogic(gamedata)
   -- Move all entities
-  local tmap = gamedata.tilemaps[gamedata.game.activelevel]
-  for _, e in pairs(gamedata.entity) do
-    mapAdvanceEntity(tmap, "game", e, gamedata.system.dt)
+  local tmap = gamedata.resource.tilemaps[gamedata.global.activelevel]
+  local ac = gamedata.actor
+  for id, _ in ipairs(ac.x) do
+    local x, y, vx, vy, cx, cy = mapAdvanceEntity(tmap, "game", id, gamedata)
+    ac.x[id] = x
+    ac.y[id] = y
+    ac.vx[id] = vx
+    ac.vy[id] = vy
+    local tco = ac.terrainco[id]
+    if tco then coroutine.resume(tco, gamedata, id, cx, cy) end
   end
-  -- resolveoverlap(tmap, "game", gamedata.entity2entity, gamedata.entity)
-  -- Sync all hitboxes to entities, if possible
-  for id, synctable in pairs(gamedata.hitboxsync) do
-    -- Assume that entity is set, otherwise provoke an error
-    local entity = gamedata.entity[id]
-    local face = gamedata.face[id]
-    local s
-    if face == "right" then s = 1 else s = -1 end
-    for boxid, syncoff in pairs(synctable) do
-      local box = gamedata.hitbox[id][boxid]
-      box.x = syncoff.x * s - 0.5 * (1 - s) * box.w + entity.x
-      box.y = syncoff.y + entity.y
-    end
+  -- Initiate all coroutines
+  local colrequest = {}
+  for id, co in ipairs(gamedata.control) do
+    colrequest[id] = coroutine.resume(gamedata)
   end
+  
   -- Now hit detection on all registered hitboxes
   local seekers, hailers = coolision.sortcollisiongroups(gamedata.hitbox)
   -- Should be fixed
@@ -167,18 +166,20 @@ end
 
 function game.init(gamedata)
   -- Do soft initialization here
-  gamedata.init(gamedata, actor.statsui)
-  gamedata.game.playerid = gamedata.init(gamedata, actor.shalltear, 100, -100)
-  --gamedata.init(gamedata, actor.mobolee, 600, -100)
-  gamedata.moboleemaster = gamedata.init(
+  --[[
+  initactor(gamedata, actor.statsui)
+  gamedata.global.playerid = initactor(gamedata, actor.shalltear, 100, -100)
+  --initactor(gamedata, actor.mobolee, 600, -100)
+  gamedata.moboleemaster = initactor(
     gamedata, actor.moboleemaster, 100, 600, -110, -100, 30, 0.3
   )
   gamedata.visual.basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height
   )
   gamedata.visual.basecanvas:setFilter("nearest", "nearest")
+  ]]--
   love.draw = render.normal
-  gamedata.timeleft = roundtime
+  gamedata.mobolee.timeleft = roundtime
 
   love.keypressed = inputhandler.keypressed
   love.keyreleased = inputhandler.keyreleased
@@ -208,7 +209,7 @@ end
 game.done = {}
 local resultuicreator = require "ui/result"
 function game.done.begin(gamedata)
-  gamedata.init(gamedata, resultuicreator)
+  initactor(gamedata, resultuicreator)
   return game.done.run(gamedata)
 end
 

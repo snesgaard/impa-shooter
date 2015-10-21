@@ -77,13 +77,13 @@ local notEmpty = function(left, right)
 end
 
 
-local futureXCollision = function(map, layer_index, entity, dt)
+local futureXCollision = function(map, layer_index, dt, ex, ey, wx, wy, vx)
   -- Calculate map indices in y-axis which needs to be checked
   -- Add 1 to offset that lua arrays starts at 1
   local layer = map.layers[layer_index]
-  local ly = indexTransformY(entity.y + entity.wy, map.y, map.tileheight)
-  local ty = indexTransformY(entity.y - entity.wy, map.y, map.tileheight)
-  local cx = indexTransformX(entity.x, map.x, map.tilewidth)
+  local ly = indexTransformY(ey + wy, map.y, map.tileheight)
+  local ty = indexTransformY(ey - wy, map.y, map.tileheight)
+  local cx = indexTransformX(ex, map.x, map.tilewidth)
   -- Check velocity and treat based
   local cleft, cright = retrieveSlope(cx, ty, layer_index, map)
   -- Check if we are standing on a slope and if it is facing our movement
@@ -93,9 +93,9 @@ local futureXCollision = function(map, layer_index, entity, dt)
     -- lower row is ignored
     ty = ty - 1
   end
-  if entity.vx > 0 then
-    local tx = indexTransformX(entity.x + entity.wx, map.x, map.tilewidth)
-    local fx = indexTransformX(entity.x + entity.wx + entity.vx * dt,
+  if vx > 0 then
+    local tx = indexTransformX(ex + wx, map.x, map.tilewidth)
+    local fx = indexTransformX(ex + wx + vx * dt,
                               map.x, map.tilewidth)
     for x = math.max(1, tx), math.min(fx, layer.width) do
       for y = math.max(1, ly), math.min(ty, layer.height) do
@@ -105,9 +105,9 @@ local futureXCollision = function(map, layer_index, entity, dt)
         end
       end
     end
-  elseif entity.vx < 0 then
-    local lx = indexTransformX(entity.x - entity.wx, map.x, map.tilewidth)
-    local fx = indexTransformX(entity.x - entity.wx + entity.vx * dt, map.x,
+  elseif vx < 0 then
+    local lx = indexTransformX(ex - wx, map.x, map.tilewidth)
+    local fx = indexTransformX(ex - wx + vx * dt, map.x,
                               map.tilewidth)
     for x = math.min(lx, layer.width), math.max(1, fx), -1 do
       for y = math.max(1, ly), math.min(ty, layer.height) do
@@ -122,17 +122,17 @@ local futureXCollision = function(map, layer_index, entity, dt)
   return nil
 end
 
-local futureYCollision = function(map, layer_index, entity, dt)
+local futureYCollision = function(map, layer_index, dt, ex, ey, wx, wy, vy)
   local layer = map.layers[layer_index]
-  local lx = indexTransformX(entity.x - entity.wx, map.x, map.tilewidth)
-  local tx = indexTransformX(entity.x + entity.wx, map.x, map.tilewidth)
-  local cx = indexTransformX(entity.x, map.x, map.tilewidth)
+  local lx = indexTransformX(ex - wx, map.x, map.tilewidth)
+  local tx = indexTransformX(ex + wx, map.x, map.tilewidth)
+  local cx = indexTransformX(ex, map.x, map.tilewidth)
   --print("entity", lx, cx, tx)
-  if entity.vy < 0 then
-    local ty = indexTransformY(entity.y - entity.wy, map.y, map.tileheight)
-    local fy = indexTransformY(entity.y - entity.wy + entity.vy * dt, map.y,
+  if vy < 0 then
+    local ty = indexTransformY(ey - wy, map.y, map.tileheight)
+    local fy = indexTransformY(ey - wy + vy * dt, map.y,
                               map.tileheight)
-    local dfy = -indexTransformNoClamp(entity.y - entity.wy + entity.vy * dt,
+    local dfy = -indexTransformNoClamp(ey - wy + vy * dt,
                                       map.y, map.tileheight)
     for y = math.max(1, ty), math.min(fy, layer.height) do
       --print("center", cx, y)
@@ -142,12 +142,12 @@ local futureYCollision = function(map, layer_index, entity, dt)
       if cleft ~= cright and notEmpty(cleft, cright) then
         -- Calculate how far the center position vertically penetrates into the
         -- slope tile, this is done in a normalized measure
-        local ty = dfy + indexTransformY(entity.y - entity.wy + entity.vy * dt,
+        local ty = dfy + indexTransformY(ey - wy + vy * dt,
                                         map.y, map.tileheight) + 1
         -- Calculate how far the center position horizontally penetrates into
         -- the slope tile, this is done in a normalized measure
-        local tx = indexTransformNoClamp(entity.x, map.x, map.tilewidth)
-                   - indexTransformX(entity.x, map.x, map.tilewidth) + 1
+        local tx = indexTransformNoClamp(ex, map.x, map.tilewidth)
+                   - indexTransformX(ex, map.x, map.tilewidth) + 1
         -- Calculate the height at which the center collision with the slope is.
         -- Again done in normalize coordinates.
         local d = 1 - (cleft*(1 - tx) + cright*tx) / map.tileheight
@@ -185,9 +185,9 @@ local futureYCollision = function(map, layer_index, entity, dt)
         return inverseIndexTransformY(cy, map.y, map.tileheight)
       end
     end
-  elseif entity.vy > 0 then
-    local ty = indexTransformY(entity.y + entity.wy, map.y, map.tileheight)
-    local fy = indexTransformY(entity.y + entity.wy + entity.vy * dt, map.y,
+  elseif vy > 0 then
+    local ty = indexTransformY(ey + wy, map.y, map.tileheight)
+    local fy = indexTransformY(ey + wy + vy * dt, map.y,
                               map.tileheight)
     for y = math.min(ty, layer.height), math.max(1, fy), -1 do
       for x = math.max(1, lx), math.min(tx, layer.width) do
@@ -255,54 +255,62 @@ end
 
 local time_scale = 1.5
 
-function mapAdvanceEntity(map, layer_index, entity, dt)
-  assert(map.layers[layer_index].type == 'tilelayer', "Invalid layer type: " .. map.layers[layer_index].type .. ". Layer must be of type: tilelayer")
+function mapAdvanceEntity(map, layer_index, id, gamedata)
+  assert(
+    map.layers[layer_index].type == 'tilelayer',
+    "Invalid layer type: " .. map.layers[layer_index].type ..
+    ". Layer must be of type: tilelayer"
+  )
+
+  local dt = gamedata.system.dt
+
+  local act = gamedata.actor
+  local x = act.x[id]
+  local y = act.y[id]
+  local vx = act.vx[id]
+  local vy = act.vy[id]
+  local wx = act.width[id]
+  local wy = act.height[id]
+
 
   dt = dt * time_scale
-  local cx = futureXCollision(map, layer_index, entity, dt)
-  entity.x = resolveFutureX(entity.x, entity.wx, entity.vx, cx, dt)
+  local cx = futureXCollision(map, layer_index, dt, x, y, wx, wy, vx)
+  x = resolveFutureX(x, wx, vx, cx, dt)
   -- Resolve and advance velocities
   if cx ~= nil then
-    entity.vx = 0
+    vx = 0
   end
   -- prevent entities from leaving the map
-  entity.x = math.max(map.x + entity.wx,
-             math.min(entity.x, map.x + map.width * map.tilewidth - entity.wx))
+  x = math.max(
+    map.x + wx,
+    math.min(x, map.x + map.width * map.tilewidth - wx)
+  )
 
-  local cy = futureYCollision(map, layer_index, entity, dt)
-  entity.y = resolveFutureY(entity.y, entity.wy, entity.vy, cy, dt)
+  local cy = futureYCollision(map, layer_index, dt, x, y, wx, wy, vy)
+  y = resolveFutureY(y, wy, vy, cy, dt)
   if cy ~= nil then
-    entity.vy = 0
+    vy = 0
   end
+  --if entity._do_gravity then
+  vx = vx + gravity.x * dt -- Acceleration should possibly be here
+  vy = vy + gravity.y * dt
+  --end
+
+  local mx = indexTransformX(x, map.x, map.tilewidth)
+  local my = indexTransformY(y - wy, map.y, map.tileheight)
+  local left, right = retrieveSlope(mx, my, layer_index, map)
   -- Compensate for weak gravity if currently on a slope
-  if entity._do_gravity then
-    entity.vx = entity.vx + (entity.ax + gravity.x) * dt
-    entity.vy = entity.vy + (entity.ay + gravity.y) * dt
-  end
-
-  local x = indexTransformX(entity.x, map.x, map.tilewidth)
-  local y = indexTransformY(entity.y - entity.wy, map.y, map.tileheight)
-  local left, right = retrieveSlope(x, y, layer_index, map)
-
-  if left ~= right and notEmpty(left, right) and entity.vy <= 0 then
+  if left ~= right and notEmpty(left, right) and vy <= 0 then
     local scale = 1.01 * (left - right) / map.tilewidth
-    entity.vy = math.min(entity.vy, -math.abs(entity.vx*scale))
+    vy = math.min(vy, -math.abs(vx * scale))
   end
 
   --if  (cx ~= nil or cy ~= nil) and entity.mapCollisionCallback ~= nil then
-  if entity.mapCollisionCallback then
-    entity.mapCollisionCallback(entity, map, collisionMap, cx, cy)
-  end
-end
+  --if entity.mapCollisionCallback then
+  --  entity.mapCollisionCallback(entity, map, collisionMap, cx, cy)
+  --end
 
-function mapMoveEntity(map, layer, entity, dx, dy)
-  local ovx = entity.vx
-  local ovy = entity.vy
-  entity.vx = dx
-  entity.vy = dy
-  mapAdvanceEntity(map, layer, entity, 1)
-  entity.vx = ovx
-  entity.vy = ovy
+  return x, y, vx, vy, cx, cy
 end
 
 --Iterates through all tilesets in a tiled map and populates them with left
@@ -330,50 +338,4 @@ function generateCollisionMap(map, layer_index)
   end
 
   return collisionMap
-end
-
-function resolveoverlap(map, layer, idlist, entities)
-  local ent2box = function(id)
-    local e = entities[id]
-    return coolision.newAxisBox(0, e.x - e.wx, e.y + e.wx, e.wx * 2, e.wy * 2)
-  end
-  local boxes = {}
-  for id, _ in pairs(idlist) do
-    boxes[id] = ent2box(id)
-  end
-  --local boxes = fun.fmap(ent2box, idlist)
-  local cool = coolision.collisiondetect(boxes, 1, 0)
-  for ida, subcool in pairs(cool) do
-    for _, idb in pairs(subcool) do
-      local lowid = entities[ida].x < entities[idb].x and ida or idb
-      local highid = lowid == ida and idb or ida
-      -- Find overlap
-      local ov = ((entities[lowid].x + entities[lowid].wx)
-                  - (entities[highid].x - entities[highid].wx))
-      local vl = math.abs(entities[lowid].vx)
-      local vh = math.abs(entities[highid].vx)
-      local ml = vl > 1
-      local mh = vh > 1
-      -- Expel whoever is moving
-      -- If nobody or both are, move according to weightin scheme
-      if ml and not mh then
-        mapMoveEntity(map, layer, entities[lowid], -ov, 0)
-      elseif not ml and mh then
-        mapMoveEntity(map, layer, entities[highid], ov, 0)
-      elseif ml and mh then
-        local sum = vl + vh
-        print(sum)
-        mapMoveEntity(map, layer, entities[lowid], -ov * vl / sum, 0)
-        mapMoveEntity(map, layer, entities[highid], ov * vh / sum, 0)
-      else
-        local wl = idlist[lowid]
-        local wh = idlist[highid]
-        local sum = wl + wh
-        wl = sum > 0 and wl or 1
-        wh = sum > 0 and wh or 1
-        mapMoveEntity(map, layer, entities[lowid], -ov * wh / sum, 0)
-        mapMoveEntity(map, layer, entities[highid], ov * wl / sum, 0)
-      end
-    end
-  end
 end

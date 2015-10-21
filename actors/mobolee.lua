@@ -29,24 +29,24 @@ local phit = {
 
 loaders.mobolee = function(gamedata)
   for _, path in pairs(ims) do
-    gamedata.resource.images[path] = gamedata.visual.images[path] or loadspriteimage(path)
+    gamedata.resource.images[path] = gamedata.resource.images[path] or loadspriteimage(path)
   end
 end
 
 local createidledrawer = function(gamedata)
-  local im = gamedata.visual.images[ims.idle]
+  local im = gamedata.resource.images[ims.idle]
   return misc.createrepeatdrawer(
     newAnimation(im, 48, 48, 0.4, 2)
   )
 end
 local createwalkdrawer = function(gamedata)
-  local im = gamedata.visual.images[ims.walk]
+  local im = gamedata.resource.images[ims.walk]
   return misc.createrepeatdrawer(
     newAnimation(im, 48, 48, 0.2, 0)
   )
 end
 local createprehitdrawer = function(gamedata)
-  local im = gamedata.visual.images[ims.prehit]
+  local im = gamedata.resource.images[ims.prehit]
   local frames = 4
   local frametime = prehittime / frames
   return misc.createoneshotdrawer(
@@ -54,7 +54,7 @@ local createprehitdrawer = function(gamedata)
   )
 end
 local createhitdrawer = function(gamedata)
-  local im = gamedata.visual.images[ims.hit]
+  local im = gamedata.resource.images[ims.hit]
   return misc.createoneshotdrawer(
     newAnimation(im, 48, 48, hitframetime, hitframes)
   )
@@ -204,7 +204,7 @@ dead.run = function(gamedata, id)
 end
 dead.drawer = function(gamedata, id)
   local anime = newAnimation( -- Place holer
-    gamedata.visual.images[ims.idle], 48, 48, 0.1, 2
+    gamedata.resource.images[ims.idle], 48, 48, 0.1, 2
   )
   local animeco = misc.createrepeatdrawer(anime)
   local explodetime = 0.5
@@ -222,7 +222,7 @@ dead.drawer = function(gamedata, id)
       local exw = 15
       local exh = 18
       local exanime = newAnimation(
-        gamedata.visual.images[ims.boom], exw, exh, 0.075, 6
+        gamedata.resource.images[ims.boom], exw, exh, 0.075, 6
       )
       -- Now declare coroutine which will draw the explosion
       local f

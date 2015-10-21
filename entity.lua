@@ -10,8 +10,8 @@ function newEntity(x, y, width, height, _do_gravity)
   e.ax = 0
   e.ay = 0
   e._do_gravity = _do_gravity
-  e.face = "right"
-  e.mapCollisionCallback = function(entity, map, collisionMap, cx, cy) end
+--  e.face = "right"
+--  e.mapCollisionCallback = function(entity, map, collisionMap, cx, cy) end
 
   return e
 end

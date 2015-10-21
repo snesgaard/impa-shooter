@@ -149,8 +149,9 @@ end
 local function createresource(resource)
   resource.__seed__ = 1
   resource.__available_id__ = {}
+  return resource
 end
-local function allocid(resource)
+function allocresource(resource)
   local available_id = resource.__available_id__
   local id = available_id[#available_id]
   if id then
@@ -162,7 +163,7 @@ local function allocid(resource)
   return s
 end
 
-local function freeid(resource, id)
+function freeresource(resource, id)
   table.insert(resource.__available_id__, id)
 end
 
@@ -202,6 +203,7 @@ gamedata = {
     width = {},
     height = {},
     face = {},
+    terrainco = {},
     -- Combat information
     health = {},
     damage = {},
@@ -215,11 +217,11 @@ gamedata = {
     invincibility = {},
     speed = {},
     -- Control related scripts
-    control = {},
     ground = {},
     -- Input
     latch = {},
   }),
+  control = createresource({}),
   hitbox = createresource({
     offx = {},
     offy = {},
@@ -257,6 +259,12 @@ gamedata = {
     timeleft = 0,
   }
 }
+
+function initactor(gamedata, f, ...)
+  local id = allocresource(gamedata.actor)
+  f(gamedata, id, ...)
+  return id
+end
 
 local draworder = {
   "box",

@@ -37,7 +37,7 @@ local jumpspeed = 200
 
 loaders.shalltear = function(gamedata)
   for _, path in pairs(ims) do
-    gamedata.visual.images[path] = loadspriteimage(path)
+    gamedata.resource.images[path] = loadspriteimage(path)
   end
 end
 
@@ -107,44 +107,44 @@ local function groundanimation(gamedata, id, idle, run)
 end
 function normal.drawer(gamedata, id)
   local normalidleco = misc.createrepeatdrawer(
-    newAnimation(gamedata.visual.images[ims.idle], 48, 48, 0.3, 4)
+    newAnimation(gamedata.resource.images[ims.idle], 48, 48, 0.3, 4)
   )
   local normaldescendco = misc.createrepeatdrawer(
-    newAnimation(gamedata.visual.images[ims.descend], 48, 48, 0.1, 2)
+    newAnimation(gamedata.resource.images[ims.descend], 48, 48, 0.1, 2)
   )
   local normalascendco = misc.createrepeatdrawer(
-    newAnimation(gamedata.visual.images[ims.ascend], 48, 48, 0.1, 2)
+    newAnimation(gamedata.resource.images[ims.ascend], 48, 48, 0.1, 2)
   )
   local makenormalmidco = function()
     return misc.createoneshotdrawer(
       newAnimation(
-        gamedata.visual.images[ims.midair], 48, 48,
+        gamedata.resource.images[ims.midair], 48, 48,
         arialanimation.midairtime / 2, 2
       )
     )
   end
   local beastdescendco = misc.createrepeatdrawer(
-    newAnimation(gamedata.visual.images[ims.beastdescend], 48, 48, 0.1, 2)
+    newAnimation(gamedata.resource.images[ims.beastdescend], 48, 48, 0.1, 2)
   )
   local beastascendco = misc.createrepeatdrawer(
-    newAnimation(gamedata.visual.images[ims.beastascend], 48, 48, 0.1, 2)
+    newAnimation(gamedata.resource.images[ims.beastascend], 48, 48, 0.1, 2)
   )
   local makebeastmidco = function()
     return misc.createoneshotdrawer(
       newAnimation(
-        gamedata.visual.images[ims.beastmidair], 48, 48,
+        gamedata.resource.images[ims.beastmidair], 48, 48,
         arialanimation.midairtime / 2, 2
       )
     )
   end
   local beastidleco = misc.createrepeatdrawer(
-    newAnimation(gamedata.visual.images[ims.beastidle], 48, 48, 0.2, 3)
+    newAnimation(gamedata.resource.images[ims.beastidle], 48, 48, 0.2, 3)
   )
   local normalrunco = misc.createrepeatdrawer(
-    newAnimation(gamedata.visual.images[ims.run], 48, 48, 1.0/10.0, 8)
+    newAnimation(gamedata.resource.images[ims.run], 48, 48, 1.0/10.0, 8)
   )
   local beastrunco = misc.createrepeatdrawer(
-    newAnimation(gamedata.visual.images[ims.beastrun], 48, 48, 1.0/10.0, 8)
+    newAnimation(gamedata.resource.images[ims.beastrun], 48, 48, 1.0/10.0, 8)
   )
   local groundco = coroutine.create(groundanimation)
   while true do
@@ -207,7 +207,7 @@ end
 
 function dead.begin(gamedata, id)
   control.drawer.main = misc.createoneshotdrawer(newAnimation(
-    gamedata.visual.images[ims.dead], 48, 48, 1.0 / 12.0, 10
+    gamedata.resource.images[ims.dead], 48, 48, 1.0 / 12.0, 10
   ))
   gamedata.hitbox[id] = {}
   gamedata.hitboxsync[id] = {}
@@ -225,7 +225,7 @@ function evade.drawer(gamedata, id, vx)
   local speed = 20
   local lifetime = 0.1
   local spray = love.graphics.newParticleSystem(
-    gamedata.visual.images[ims.evade], 100
+    gamedata.resource.images[ims.evade], 100
   )
   local sx = gamedata.face[id] == "right" and 1 or -1
   local vx = -sx * gamedata.entity[id].vx
@@ -278,7 +278,7 @@ function evade.run(gamedata, id, nexthit)
   gamedata.entity2entity[id] = nil
   gamedata.invincibility[id] = gamedata.invincibility[id] + 1
   control.drawer.main = misc.createrepeatdrawer(newAnimation(
-    gamedata.visual.images[ims.evade], 48, 48, 100, 1
+    gamedata.resource.images[ims.evade], 48, 48, 100, 1
   ))
   control.drawer.evade = coroutine.create(evade.drawer)
   local timer = misc.createtimer(gamedata.system.time, evade.time)
@@ -316,7 +316,7 @@ function clawa.run(gamedata, id)
   local ft = clawa.time / clawa.frames
   control.drawer.main = misc.createoneshotdrawer(
     newAnimation(
-      gamedata.visual.images[ims.clawa], 48, 48, ft, clawa.frames
+      gamedata.resource.images[ims.clawa], 48, 48, ft, clawa.frames
     )
   )
   gamedata.entity[id].vx = 0
@@ -326,7 +326,7 @@ function clawa.run(gamedata, id)
   )
   control.drawer.main = misc.createoneshotdrawer(
     newAnimation(
-      gamedata.visual.images[ims.clawarec], 48, 48,
+      gamedata.resource.images[ims.clawarec], 48, 48,
       clawa.recovtime / clawa.recovframes, clawa.recovframes
     )
   )
@@ -357,7 +357,7 @@ function clawb.run(gamedata, id)
   local ft = clawb.time / clawb.frames
   control.drawer.main = misc.createoneshotdrawer(
     newAnimation(
-      gamedata.visual.images[ims.clawb], 48, 48, ft, clawb.frames
+      gamedata.resource.images[ims.clawb], 48, 48, ft, clawb.frames
     )
   )
   turn(gamedata, id)
@@ -370,7 +370,7 @@ function clawb.run(gamedata, id)
 
   control.drawer.main = misc.createoneshotdrawer(
     newAnimation(
-      gamedata.visual.images[ims.clawbrec], 48, 48,
+      gamedata.resource.images[ims.clawbrec], 48, 48,
       clawb.recovtime / clawb.recovframes, clawb.recovframes
     )
   )
@@ -403,7 +403,7 @@ function clawc.run(gamedata, id)
   local ft = clawc.time / clawc.frames
   control.drawer.main = misc.createoneshotdrawer(
     newAnimation(
-      gamedata.visual.images[ims.clawc], 96, 48, ft, clawc.frames
+      gamedata.resource.images[ims.clawc], 96, 48, ft, clawc.frames
     )
   )
   gamedata.entity[id].vx = 0
@@ -414,7 +414,7 @@ function clawc.run(gamedata, id)
 
   control.drawer.main = misc.createoneshotdrawer(
     newAnimation(
-      gamedata.visual.images[ims.clawcrec], 96, 48,
+      gamedata.resource.images[ims.clawcrec], 96, 48,
       clawc.recovtime / clawc.recovframes, clawc.recovframes
     )
   )

@@ -21,7 +21,7 @@ local drawstats = function(gamedata, id)
     --local maxhp = gamedata.maxhealth[pid]
     local hp = gamedata.health[pid]
     local dmg = gamedata.damage[pid]
-    local hpim = gamedata.visual.images[images.hporb]
+    local hpim = gamedata.resource.images[images.hporb]
     if hp and dmg then
       renderhp = hp - dmg
     else
@@ -37,7 +37,7 @@ local drawstats = function(gamedata, id)
     -- Render stamina
     local renderstam = 0
     local stam = gamedata.stamina[pid]
-    local stamim = gamedata.visual.images[images.stamorb]
+    local stamim = gamedata.resource.images[images.stamorb]
     if stam then
       renderstam = stam.stamina - stam.damage
     else
