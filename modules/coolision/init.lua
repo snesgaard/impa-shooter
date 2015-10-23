@@ -130,24 +130,90 @@ coolision.groupedcd = function(seekers, hailers, x, y)
 
   return collisiontable
 end
-coolision.sortcollisiongroups = function(hitboxes)
+coolision.groupedcd = function(seekers, hailers, owner, xlow, xup, ylow, yup)
+  local isseeker = {}
+  local boxids = {}
+  for _, bid in ipairs(seekers) do
+    isseeker[bid] = true
+    table.insert(boxids, bid)
+  end
+  for _, bid in ipairs(hailers) do
+    isseeker[bid] = false
+    table.insert(boxids, bid)
+  end
+  -- Sort by x-axis
+  table.sort(boxids, function(a, b) return xlow[a] < xlow[b] end)
+  local collisions = {}
+  for _, ida in pairs(boxids) do
+    local potentialcol = {}
+    for _, idb in next, boxids, k do
+      if isseeker[ida] == not isseeker[idb] then
+        if not (xhigh[ida] < xlow[idb]) then
+          table.insert(potentialcol, idb)
+        else
+          break
+        end
+      end
+    end
+    local cols = {}
+    for _, idb in pairs(potentialcol) do
+      if not (yhigh[ida] < ylow[idb] or yhigh[idb] < ylow[ida]) then
+        table.insert(cols, owner[idb])
+      end
+    end
+    coolisions[ida] = cols
+  end
+  return coolisions
+end
+coolision.sortcoolisiongroups = function(gamedata, colrequests)
+  -- Before sorting let us calculate the borders and limits of each box
+  -- The structure of the code is intended to emulate SOA, cache-friendly coding
+  -- style
+  local xlower = {}
+  local xupper = {}
+  for id, boxids in ipairs(colrequests) do
+    local ax = gamedata.actor.x[id] or 0
+    local f = gamedata.actor.face[id]
+    for _, bid in ipairs(boxids) do
+      local lx = f * gamedata.hitbox.x[bid] + ax
+      local hx = lx + f * gamedata.hitbox.width[bid]
+      xlower[bid] = math.min(lx, hx)
+      xupper[bid] = math.max(lx, hx)
+    end
+  end
+  local ylower = {}
+  local yupper = {}
+  for id, boxids in ipairs(colrequests) do
+    local ay = gamedata.actor.y[id] or 0
+    for _, bid in ipairs(boxids) do
+      local ly = gamedata.hitbox.y[bid]
+      local hy = ly + gamedata.hitbox.height[bid]
+      ylower[bid] = ly
+      yupper[bid] = hy
+    end
+  end
+  -- Next divide into groups of seekers and hailers for easier matching
   local seekers = {}
   local hailers = {}
-  for _, boxgroup in pairs(hitboxes) do
-    for _, box in pairs(boxgroup) do
-      for _, seek in pairs(box.seek) do
-        local seektable = seekers[seek] or {}
-        table.insert(seektable, box)
-        seekers[seek] = seektable
+  local owner = {}
+  for id, boxids in ipairs(colrequests) do
+    for _, bid in ipairs(boxids) do
+      owner[bid] = id
+      local s = gamedata.hitbox.seek[bid]
+      if s then
+        local seektable = seekers[s] or {}
+        table.insert(seektable, bid)
+        seekers[s] = seektable
       end
-      for _, hail in pairs(box.hail) do
-        local hailtable = hailers[hail] or {}
-        table.insert(hailtable, box)
-        hailers[hail] = hailtable
+      local h = gamedata.hitbox.hail[bid]
+      if h then
+        local hailtable = hailers[h] or {}
+        table.insert(hailtable, bid)
+        hailers[h] = hailtable
       end
     end
   end
-  return seekers, hailers
+  return seekers, hailers, owner, xlower, xupper, ylower, yhigher
 end
 coolision.docollisiongroups = function(seekers, hailers)
   for type, subhailers in pairs(hailers) do

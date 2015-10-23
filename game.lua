@@ -117,26 +117,9 @@ local function mainlogic(gamedata)
   for id, co in ipairs(gamedata.control) do
     colrequest[id] = coroutine.resume(gamedata)
   end
-  
+
   -- Now hit detection on all registered hitboxes
-  local seekers, hailers = coolision.sortcollisiongroups(gamedata.hitbox)
-  -- Should be fixed
-  -- if drawboxes then drawhailers = hailers end
-  coolision.docollisiongroups(seekers, hailers)
-  -- Update stamina: HACK Rate is not real
-  local rate = 1
-  for id, usedstam in pairs(gamedata.usedstamina) do
-    local nextstam = usedstam - rate * gamedata.system.dt
-    if nextstam < 0 then
-      gamedata.usedstamina[id] = nil
-    else
-      gamedata.usedstamina[id] = nextstam
-    end
-  end
-  -- Update control state for all actors
-  for id, cont in pairs(gamedata.control) do
-    coroutine.resume(cont, gamedata, id)
-  end
+
   -- Align lighyt with player
   --gamedata.light.point.pos[1][1] = gamedata.entity[gamedata.game.playerid].x
   --gamedata.light.point.pos[1][2] = gamedata.entity[gamedata.game.playerid].y

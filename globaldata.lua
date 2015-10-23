@@ -227,6 +227,8 @@ gamedata = {
     offy = {},
     width = {},
     height = {},
+    seek = {},
+    hail = {},
   }),
   hitboxtypes = {},
   light = {
