@@ -23,17 +23,33 @@ light.draw = function(gamedata, canvas, x, y)
   local shader = gamedata.resource.shaders[shaderpath]
   gfx.setShader(shader)
   shader:send("normalmap", gamedata.resource.images[normalmap])
-  shader:send("campos", {math.floor(-x), math.floor(y - gamedata.visual.height / gamedata.visual.scale)})
+  shader:send(
+    "campos", {math.floor(-x),
+    math.floor(y - gamedata.visual.height / gamedata.visual.scale)}
+  )
   shader:send("scale", 1.0 / gamedata.visual.scale)
   shader:send("ambientcoeffecient", light.ambient.coeffecient)
   shader:send("ambientcolor", light.ambient.color)
   shader:send("gamma", light.gamma)
   -- Send a light source
-  shader:sendInt("lights", light.point.count)
+  local lp = light.point
+  local lpdata = {
+    color = {},
+    pos = {},
+    att = {},
+    count = 0,
+  }
+  for id, a in ipairs(attenuation) do
+    table.insert(lpdata.color, {lp.red[id], lp.green[id], lp.blue[id]})
+    table.insert(lpdata.pos, {lp.x[id], lp.y[id], lp.z[id]})
+    table.insert(lpdata.att, a)
+    lpdata.count = lpdata.count + 1
+  end
+  shader:sendInt("lights", lpdata.count)
   if light.point.count > 0 then
-    shader:send("lightcolor", unpack(light.point.color))
-    shader:send("lightpos", unpack(light.point.pos))
-    shader:send("attenuation", unpack(light.point.attenuation))
+    shader:send("lightcolor", unpack(lpdata.color))
+    shader:send("lightpos", unpack(lpdata.pos))
+    shader:send("attenuation", unpack(lpdata.att))
   end
   -- Submit orthogonal light sources
   shader:sendInt("ortholights", light.ortho.count)
@@ -49,8 +65,12 @@ end
 local function setuppointlight(gamedata, color, pos, atten)
   local lp = gamedata.light.point
   local id = allocresource(lp)
-  lp.color[id] = color
-  lp.pos[id] = pos
+  lp.red[id] = color[0]
+  lp.green[id] = color[1]
+  lp.blue[id] = color[2]
+  lp.x[id] = pos[0]
+  lp.y[id] = pos[1]
+  lp.y[id] = pos[2]
   lp.attenuation[id] = atten
   return id
 end
@@ -58,8 +78,12 @@ end
 local function setuportholight(gamedata, color, dir, coeff)
   local lo = gamedata.light.ortho
   local id = allocresource(lo)
-  lo.color[id] = color
-  lo.dir[id] = dir
+  lo.red[id] = color[0]
+  lo.green[id] = color[1]
+  lo.blue[id] = color[2]
+  lo.dx[id] = dir[0]
+  lo.dy[id] = dir[1]
+  lo.dz[id] = dir[2]
   lo.coeffecient[id] = coeff
 end
 

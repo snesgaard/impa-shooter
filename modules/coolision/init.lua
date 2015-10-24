@@ -85,7 +85,7 @@ coolision.collisiondetect = function(axisboxtable, x, y)
 
   return collisiontable
 end
-
+--[[
 coolision.groupedcd = function(seekers, hailers, x, y)
   if #seekers == 0 or #hailers == 0 then return {} end
   -- Concatenate tables and assign labels
@@ -130,6 +130,8 @@ coolision.groupedcd = function(seekers, hailers, x, y)
 
   return collisiontable
 end
+]]--
+
 coolision.groupedcd = function(seekers, hailers, owner, xlow, xup, ylow, yup)
   local isseeker = {}
   local boxids = {}
@@ -161,9 +163,9 @@ coolision.groupedcd = function(seekers, hailers, owner, xlow, xup, ylow, yup)
         table.insert(cols, owner[idb])
       end
     end
-    coolisions[ida] = cols
+    collisions[ida] = cols
   end
-  return coolisions
+  return collisions
 end
 coolision.sortcoolisiongroups = function(gamedata, colrequests)
   -- Before sorting let us calculate the borders and limits of each box
@@ -215,6 +217,26 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
   end
   return seekers, hailers, owner, xlower, xupper, ylower, yhigher
 end
+coolision.docollisiondetections = function(gamedata, colrequests)
+  local s, h, o, xlow, xup, ylow, yup = coolision.sortcoolisiongroups(
+    gamedata, colrequests
+  )
+  local allcols = {}
+  for type, subhailers in ipairs(h) do
+    local subseekers = seekers[type]
+    local coolisions = coolision.groupedcd(
+      subseekers, subhailers, o, xlow, xup, ylow, yup
+    )
+    for bid, coltable in ipairs(coolisions) do
+      local ownid = owner[bid]
+      local owntable = allcols[ownid] or {}
+      owntable[bid] = coltable
+      allcols[ownid] = owntable
+    end
+  end
+  return allcols
+end
+--[[
 coolision.docollisiongroups = function(seekers, hailers)
   for type, subhailers in pairs(hailers) do
     local subseekers = seekers[type] or {}
@@ -227,6 +249,7 @@ coolision.docollisiongroups = function(seekers, hailers)
     end
   end
 end
+]]--
 
 coolision.newAxisBox = function(id, x, y, w, h, hail, seek, callback)
   local box = {}

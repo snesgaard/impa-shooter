@@ -24,17 +24,18 @@ function render.normal()
   -- Setup camera translation
   gfx.rectangle("fill", 0, 0, gamedata.visual.width, gamedata.visual.height)
   gfx.setColor(255, 255, 255)
-  local tmap = gamedata.tilemaps[gamedata.game.activelevel]
-  local pentity = gamedata.entity[gamedata.game.playerid]
+  local tmap = gamedata.resource.tilemaps[gamedata.global.level]
+  --local pentity = gamedata.entity[gamedata.global.playerid]
   local x, y = calculatecameracenter(tmap, pentity)
   love.graphics.translate(x, y)
   -- Draw level tilemap
-  coroutine.resume(gamedata.visual.leveldraw, gamedata, gamedata.game.activelevel)
+  coroutine.resume(gamedata.visual.leveldraw, gamedata, gamedata.global.level)
   -- Setup actor drawing transforms
   love.graphics.scale(1, -1)
   -- First sort all actors according to layers
   local sorted_drawers = {}
-  for id, d in pairs(gamedata.visual.drawers) do
+  --[[
+  for id, d in pairs(gamedata.drawers.world) do
     local type = gamedata.actor[id]
     local order = gamedata.visual.draworder[type] or -1
     table.insert(sorted_drawers, {ord = order, id = id, co = d})
@@ -51,6 +52,7 @@ function render.normal()
   for _, t in ipairs(sorted_drawers) do
     coroutine.resume(t.co, gamedata, t.id)
   end
+  ]]--
   -- Draw boxes if needed
   --[[
   if drawboxes then
@@ -69,7 +71,7 @@ function render.normal()
   -- Introduce normalize screen coordinates for UI drawing
   -- love.graphics.scale(gamedata.visual.width, gamedata.visual.width)
   love.graphics.scale(gamedata.visual.scale)
-  for id, d in pairs(gamedata.visual.uidrawers) do
+  for id, d in pairs(gamedata.drawers.ui) do
     coroutine.resume(d, gamedata, id)
   end
   -- Finally draw the time remaining
@@ -123,10 +125,12 @@ local function mainlogic(gamedata)
   -- Align lighyt with player
   --gamedata.light.point.pos[1][1] = gamedata.entity[gamedata.game.playerid].x
   --gamedata.light.point.pos[1][2] = gamedata.entity[gamedata.game.playerid].y
+  --[[
   for id, clean in pairs(gamedata.cleanup) do
     clean(gamedata, id)
     gamedata.unregister(id)
   end
+  ]]--
   gamedata.cleanup = {}
 end
 
@@ -156,11 +160,11 @@ function game.init(gamedata)
   gamedata.moboleemaster = initactor(
     gamedata, actor.moboleemaster, 100, 600, -110, -100, 30, 0.3
   )
+  ]]--
   gamedata.visual.basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height
   )
   gamedata.visual.basecanvas:setFilter("nearest", "nearest")
-  ]]--
   love.draw = render.normal
   gamedata.mobolee.timeleft = roundtime
 
@@ -172,17 +176,18 @@ end
 function game.run(gamedata)
   -- Main game logic here
   mainlogic(gamedata)
-  local pid = gamedata.game.playerid
-  local phealth = gamedata.health[pid] or 0
-  local pdmg = gamedata.damage[pid] or 0
-  gamedata.timeleft = gamedata.timeleft - gamedata.system.dt
+  local pid = gamedata.global.playerid
+  local actab = gamedata.actor
+  local phealth = actab.health[pid] or 0
+  local pdmg = actab.damage[pid] or 0
+  gamedata.mobolee.timeleft = gamedata.mobolee.timeleft - gamedata.system.dt
   --[[
   if not (phealth > pdmg)  then
     --return game.done(coroutine.yield())
     -gamedata.softreset(gamedata)
     return game.init(coroutine.yield())
   --]]
-  if gamedata.timeleft < 0 or phealth <= pdmg then
+  if gamedata.mobolee.timeleft < 0 or phealth <= pdmg then
     return game.done.begin(coroutine.yield())
   else
     return game.run(coroutine.yield())

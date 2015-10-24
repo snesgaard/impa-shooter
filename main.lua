@@ -58,7 +58,7 @@ function createmapdrawer(mapkey)
   local co = coroutine.create(function(gamedata)
     while true do
       love.graphics.setBackgroundColor(70, 70, 120, 255)
-      local map = gamedata.tilemaps[mapkey]
+      local map = gamedata.resource.tilemaps[mapkey]
       map:draw()
       coroutine.yield()
     end
