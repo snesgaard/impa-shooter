@@ -32,8 +32,15 @@ local ims = {
 local w = 6
 local h = 16
 local runspeed = 100
-local evadekey = "lshift"
+local keys = {
+  attack = "f",
+  dash = "lshift",
+  jump = " ",
+  left = "left",
+  right = "right",
+}
 local jumpspeed = 200
+local midairtime = 0.1
 
 loaders.shalltear = function(gamedata)
   for _, path in pairs(ims) do
@@ -52,12 +59,12 @@ local function isbeast(gamedata, id)
 end
 
 local function turn(gamedata, id)
-  local l = input.isdown(gamedata, "left")
-  local r = input.isdown(gamedata, "right")
+  local l = input.isdown(gamedata, keys.left)
+  local r = input.isdown(gamedata, keys.right)
   if l and not r then
-    gamedata.face[id] = "left"
+    gamedata.actor.face[id] = -1
   elseif not l and r then
-    gamedata.face[id] = "right"
+    gamedata.actor.face[id] = 1
   end
 end
 
@@ -69,401 +76,158 @@ local clawa = {}
 local clawb = {}
 local clawc = {}
 
-local arialanimation = {}
-arialanimation.midairtime = 0.1
-function arialanimation.ascend(gamedata, id, ascend, descend, midair)
-  coroutine.resume(ascend, gamedata, id)
-  if gamedata.entity[id].vy > 0 then
-    return arialanimation.ascend(coroutine.yield())
-  else
-    return arialanimation.mid(coroutine.yield())
-  end
-end
-function arialanimation.mid(gamedata, id, ascend, descend, midair, timer)
-  timer = timer or misc.createtimer(gamedata.system.time, arialanimation.midairtime)
-  coroutine.resume(midair, gamedata, id)
-  if timer(gamedata.system.time) then
-    coroutine.yield()
-    return arialanimation.mid(gamedata, id, ascend, descend, midair, timer)
-  else
-    return arialanimation.descend(coroutine.yield())
-  end
-end
-function arialanimation.descend(gamedata, id, ascend, descend, midair)
-  coroutine.resume(descend, gamedata, id)
-  if gamedata.entity[id].vy > 0 then
-    return arialanimation.ascend(coroutine.yield())
-  else
-    return arialanimation.descend(coroutine.yield())
-  end
-end
-local function groundanimation(gamedata, id, idle, run)
-  if math.abs(gamedata.entity[id].vx) < 1 then
-    coroutine.resume(idle, gamedata, id)
-  else
-    coroutine.resume(run, gamedata, id)
-  end
-  return groundanimation(coroutine.yield())
-end
-function normal.drawer(gamedata, id)
-  local normalidleco = misc.createrepeatdrawer(
-    newAnimation(gamedata.resource.images[ims.idle], 48, 48, 0.3, 4)
-  )
-  local normaldescendco = misc.createrepeatdrawer(
-    newAnimation(gamedata.resource.images[ims.descend], 48, 48, 0.1, 2)
-  )
-  local normalascendco = misc.createrepeatdrawer(
-    newAnimation(gamedata.resource.images[ims.ascend], 48, 48, 0.1, 2)
-  )
-  local makenormalmidco = function()
-    return misc.createoneshotdrawer(
-      newAnimation(
-        gamedata.resource.images[ims.midair], 48, 48,
-        arialanimation.midairtime / 2, 2
-      )
-    )
-  end
-  local beastdescendco = misc.createrepeatdrawer(
-    newAnimation(gamedata.resource.images[ims.beastdescend], 48, 48, 0.1, 2)
-  )
-  local beastascendco = misc.createrepeatdrawer(
-    newAnimation(gamedata.resource.images[ims.beastascend], 48, 48, 0.1, 2)
-  )
-  local makebeastmidco = function()
-    return misc.createoneshotdrawer(
-      newAnimation(
-        gamedata.resource.images[ims.beastmidair], 48, 48,
-        arialanimation.midairtime / 2, 2
-      )
-    )
-  end
-  local beastidleco = misc.createrepeatdrawer(
-    newAnimation(gamedata.resource.images[ims.beastidle], 48, 48, 0.2, 3)
-  )
-  local normalrunco = misc.createrepeatdrawer(
-    newAnimation(gamedata.resource.images[ims.run], 48, 48, 1.0/10.0, 8)
-  )
-  local beastrunco = misc.createrepeatdrawer(
-    newAnimation(gamedata.resource.images[ims.beastrun], 48, 48, 1.0/10.0, 8)
-  )
-  local groundco = coroutine.create(groundanimation)
-  while true do
-    while game.onground(gamedata, id) do
-      if isbeast(gamedata, id) then
-        coroutine.resume(groundco, gamedata, id, beastidleco, beastrunco)
-      else
-        coroutine.resume(groundco, gamedata, id, normalidleco, normalrunco)
-      end
-      coroutine.yield()
-    end
-    local arialco = coroutine.create(arialanimation.ascend)
-    local midco = makenormalmidco()
-    local bmidco = makebeastmidco()
-    while not game.onground(gamedata, id) do
-      if isbeast(gamedata, id) then
-        coroutine.resume(
-          arialco, gamedata, id, beastascendco, beastdescendco, bmidco
-        )
-      else
-        coroutine.resume(
-          arialco, gamedata, id, normalascendco, normaldescendco, midco
-        )
-      end
-      coroutine.yield()
-    end
-  end
-end
 function normal.begin(gamedata, id)
-  control.drawer.main = coroutine.create(normal.drawer)
+  -- Set drawing coroutine
+  gamedata.actor.draw[id] = control.createdrawer(coroutine.create(normal.draw))
   return normal.run(gamedata, id)
 end
+
 function normal.run(gamedata, id)
-  if input.ispressed(gamedata, evadekey) then
-    input.latch(gamedata, evadekey)
-    return evade.run(gamedata, id)
-  end
-  local e = gamedata.entity[id]
-  if input.isdown(gamedata, "right") then
-    gamedata.face[id] = "right"
-    e.vx = runspeed
-  elseif input.isdown(gamedata, "left") then
-    gamedata.face[id] = "left"
-    e.vx = -runspeed
-  else
-    e.vx = 0
-  end
-  if input.ispressed(gamedata, " ") and game.onground(gamedata, id) then
-    input.latch(gamedata, " ")
-    gamedata.ground[id] = nil
-    e.vy = jumpspeed
-  end
-  coroutine.yield()
-  if input.ispressed(gamedata, "f") then
-    input.latch(gamedata, "f")
-    return clawa.run(gamedata, id)
-  end
-  return normal.run(gamedata, id)
-end
-
-function dead.begin(gamedata, id)
-  control.drawer.main = misc.createoneshotdrawer(newAnimation(
-    gamedata.resource.images[ims.dead], 48, 48, 1.0 / 12.0, 10
-  ))
-  gamedata.hitbox[id] = {}
-  gamedata.hitboxsync[id] = {}
-  gamedata.entity[id].vx = 0
-  return dead.run(gamedata, id)
-end
-
-function dead.run(gamedata, id)
-  return dead.run(coroutine.yield())
-end
-
-evade.time = 0.1
-evade.dist = 40
-function evade.drawer(gamedata, id, vx)
-  local speed = 20
-  local lifetime = 0.1
-  local spray = love.graphics.newParticleSystem(
-    gamedata.resource.images[ims.evade], 100
+  local sx = (
+    (input.isdown(gamedata, keys.right) and 1 or 0)
+    + (input.isdown(gamedata, keys.left) and -1 or 0)
   )
-  local sx = gamedata.face[id] == "right" and 1 or -1
-  local vx = -sx * gamedata.entity[id].vx
-  spray:setSpeed(vx)
-  spray:setEmissionRate(30)
-  spray:setSizes(1.0)
-  spray:setAreaSpread("normal", 0, 0)
-  spray:setInsertMode("random")
-  spray:setSizeVariation(0)
-  spray:setParticleLifetime(lifetime, lifetime)
-  spray:setDirection(0)
-  spray:setLinearAcceleration(0, 0, 0, 0)
-  spray:setColors(255, 50, 50, 200, 255, 50, 100, 100)
-  local timer = misc.createtimer(gamedata.system.time, evade.time)
-  local entity = gamedata.entity[id]
-  local o = -5 * sx
-  while timer(gamedata.system.time) do
-    spray:update(gamedata.system.dt)
-    love.graphics.draw(spray, entity.x + o, entity.y, 0, sx, -1)
-    coroutine.yield()
+  gamedata.actor.vx[id] = sx * runspeed
+  if sx ~= 0 then gamedata.actor.face[id] = sx end
+  if input.ispressed(gamedata, keys.jump) and game.onground(gamedata, id) then
+    input.latch(gamedata, keys.jump)
+    gamedata.actor.ground[id] = nil
+    gamedata.actor.vy[id] = jumpspeed
   end
-  spray:setEmissionRate(0)
-  local x = entity.x + o
-  local y = entity.y
-  while spray:getCount() > 0 do
-    spray:update(gamedata.system.dt)
-    love.graphics.draw(spray, x, y, 0, sx, -1)
-    coroutine.yield()
-  end
-  control.drawer.evade = nil
+  return normal.run(coroutine.yield())
 end
-function evade.run(gamedata, id, nexthit)
-  -- Determine evade direction
-  local dx = (
-    (input.ispressed(gamedata, "left") and -1 or 0)
-    + (input.ispressed(gamedata, "right") and 1 or 0)
-  )
-  if dx == 1 then
-    gamedata.face[id] = "right"
-  elseif dx == -1 then
-    gamedata.face[id] = "left"
+
+function normal.draw(gamedata, id)
+  local function creategroundco(idleid, runid)
+    local run
+    local begin = function(gamedata, id)
+      idleco = misc.createdrawer(idleid)
+      runco = misc.createdrawer(runid)
+      return run(idleco, runco, gamedata, id)
+    end
+    run = function(idleco, runco, gamedata, id)
+      if math.abs(gamedata.actor.vx[id]) > 1 then
+        coroutine.resume(runco, gamedata, id)
+      else
+        coroutine.resume(idleco, gamedata, id)
+      end
+      return run(idleco, runco, coroutine.yield())
+    end
+    return coroutine.create(begin)
   end
-  -- If no input provided
-  if dx == 0 then
-    dx = gamedata.face[id] == "right" and 1 or -1
+  local function createairco(ascend, mid, descend)
+    return coroutine.create(function(gamedata, id)
+      local aco = misc.createdrawer(ascend)
+      local dco = misc.createdrawer(descend)
+      while true do
+        while gamedata.actor.vy[id] > 0 do
+          coroutine.resume(aco, gamedata, id)
+          coroutine.yield()
+        end
+        local timer = misc.createtimer(gamedata, midairtime)
+        local mco = misc.createdrawer(mid, "once")
+        while timer(gamedata) and gamedata.actor.vy[id] <= 0 do
+          coroutine.resume(mco, gamedata, id)
+          coroutine.yield()
+        end
+        while gamedata.actor.vy[id] <= 0 do
+          coroutine.resume(dco, gamedata, id)
+          coroutine.yield()
+        end
+      end
+    end)
   end
-  -- Set speeds
-  local vx = dx * evade.dist / evade.time
-  local vy = 0
-  gamedata.entity2entity[id] = nil
-  gamedata.invincibility[id] = gamedata.invincibility[id] + 1
-  control.drawer.main = misc.createrepeatdrawer(newAnimation(
-    gamedata.resource.images[ims.evade], 48, 48, 100, 1
-  ))
-  control.drawer.evade = coroutine.create(evade.drawer)
-  local timer = misc.createtimer(gamedata.system.time, evade.time)
-  while timer(gamedata.system.time) do
-    gamedata.entity[id].vx = vx
-    gamedata.entity[id].vy = vy
+  local anime = gamedata.actor.claimed[id].animations
+  local calmground = creategroundco(anime.idle, anime.run)
+  local calmair = createairco(anime.ascend, anime.midair, anime.descend)
+  local beastground
+  local beastair
+  while true do
+    if game.onground(gamedata, id) then
+      coroutine.resume(calmground, gamedata, id)
+    else
+      coroutine.resume(calmair, gamedata, id)
+    end
     coroutine.yield()
   end
-  gamedata.invincibility[id] = gamedata.invincibility[id] - 1
-  gamedata.entity[id].vx = 0
-  gamedata.entity[id].vy = 0
-  gamedata.entity2entity[id] = 0
-  gamedata.message[id].beast = gamedata.system.time
-  if nexthit and input.ispressed(gamedata, "f") then
-    input.latch(gamedata, "f")
-    return nexthit(gamedata, id)
+end
+
+local evadetime = 0.1
+local evadedist = 40
+function evade.run(gamedata, id)
+  local anime = gamedata.actor.claimed[id].animations
+  gamedata.actor.draw[id] = control.createdrawer(
+    misc.createdrawer(anime.evade)
+  )
+  turn(gamedata, id)
+  local f = gamedata.actor.face[id]
+  gamedata.actor.vx[id] = f * evadedist / evadetime
+  local timer = misc.createtimer(gamedata, evadetime)
+  while timer(gamedata) do
+    gamedata.actor.vy[id] = 0
+    coroutine.yield()
   end
   return normal.begin(gamedata, id)
 end
 
--- Combat utility
-local function combatcancel(gamedata, id)
-  return (
-    (input.ispressed(gamedata, " ") and game.onground(gamedata, id))
-    or input.ispressed(gamedata, evadekey)
-  )
-end
-
--- Slash time
-clawa.time = 0.2
-clawa.frames = 4
-clawa.recovtime = 0.3
-clawa.recovframes = 7
-function clawa.run(gamedata, id)
-  local ft = clawa.time / clawa.frames
-  control.drawer.main = misc.createoneshotdrawer(
-    newAnimation(
-      gamedata.resource.images[ims.clawa], 48, 48, ft, clawa.frames
-    )
-  )
-  gamedata.entity[id].vx = 0
-  turn(gamedata, id)
-  combat.activeboxsequence(
-    gamedata, id, "hit", 2, 0, 11, 23, 15, ft * 2, ft * 3, clawa.time
-  )
-  control.drawer.main = misc.createoneshotdrawer(
-    newAnimation(
-      gamedata.resource.images[ims.clawarec], 48, 48,
-      clawa.recovtime / clawa.recovframes, clawa.recovframes
-    )
-  )
-  local recovtimer = misc.createtimer(gamedata.system.time, clawa.recovtime)
-  while recovtimer(gamedata.system.time) do
-
-    if input.ispressed(gamedata, evadekey) then
-      input.latch(gamedata, evadekey)
-      return evade.run(gamedata, id, clawb.run)
-    elseif combatcancel(gamedata, id) then
-      break
-    elseif input.ispressed(gamedata, "f") then
-      input.latch(gamedata, "f")
-      return clawb.run(gamedata, id)
-    end
-    coroutine.yield()
-  end
-  gamedata.message[id].beast = gamedata.system.time
-  return normal.begin(gamedata, id)
-end
-
-clawb.time = 0.2
-clawb.frames = 4
-clawb.dist = 0
-clawb.recovtime = 0.3
-clawb.recovframes = 3
-function clawb.run(gamedata, id)
-  local ft = clawb.time / clawb.frames
-  control.drawer.main = misc.createoneshotdrawer(
-    newAnimation(
-      gamedata.resource.images[ims.clawb], 48, 48, ft, clawb.frames
-    )
-  )
-  turn(gamedata, id)
-  local s = gamedata.face[id] == "right" and 1 or -1
-  gamedata.entity[id].vx = s * clawb.dist / clawb.time
-  combat.activeboxsequence(
-    gamedata, id, "hit", 2, -3, 11, 27, 17, ft * 2, ft * 3, clawb.time
-  )
-  gamedata.entity[id].vx = 0
-
-  control.drawer.main = misc.createoneshotdrawer(
-    newAnimation(
-      gamedata.resource.images[ims.clawbrec], 48, 48,
-      clawb.recovtime / clawb.recovframes, clawb.recovframes
-    )
-  )
-
-  local recovtimer = misc.createtimer(gamedata.system.time, clawb.recovtime)
-  while recovtimer(gamedata.system.time) do
-
-    if input.ispressed(gamedata, evadekey) then
-      input.latch(gamedata, evadekey)
-      return evade.run(gamedata, id, clawc.run)
-    elseif combatcancel(gamedata, id) then
-      break
-    elseif input.ispressed(gamedata, "f") then
-      input.latch(gamedata, "f")
-      return clawc.run(gamedata, id)
-    end
-    coroutine.yield()
-  end
-  gamedata.message[id].beast = gamedata.system.time
-  return normal.begin(gamedata, id)
-end
-
--- Slash time
-clawc.time = 0.2
-clawc.frames = 4
-clawc.recovtime = 0.3
-clawc.recovframes = 3
-function clawc.run(gamedata, id)
-
-  local ft = clawc.time / clawc.frames
-  control.drawer.main = misc.createoneshotdrawer(
-    newAnimation(
-      gamedata.resource.images[ims.clawc], 96, 48, ft, clawc.frames
-    )
-  )
-  gamedata.entity[id].vx = 0
-  turn(gamedata, id)
-  combat.activeboxsequence(
-    gamedata, id, "hit", 4, -2, 17, 51, 29, ft, ft * 2, clawc.time
-  )
-
-  control.drawer.main = misc.createoneshotdrawer(
-    newAnimation(
-      gamedata.resource.images[ims.clawcrec], 96, 48,
-      clawc.recovtime / clawc.recovframes, clawc.recovframes
-    )
-  )
-
-  local recovtimer = misc.createtimer(gamedata.system.time, clawc.recovtime)
-  local nextstate = normal.begin
-  while recovtimer(gamedata.system.time) do
-    if combatcancel(gamedata, id) then
-      nextstate = normal.begin
-      break
-    elseif input.ispressed(gamedata, "f") then
-      input.latch(gamedata, "f")
-      nextstate = clawa.run
-    end
-    coroutine.yield()
-  end
-  gamedata.message[id].beast = gamedata.system.time
-  return nextstate(gamedata, id)
-end
-
-control.drawer = {}
-control.drawer.main = nil
-control.drawer.evade = nil
-function control.drawer.co(gamedata, id)
-  local d = control.drawer
-  if d.evade then coroutine.resume(d.evade, gamedata, id) end
-  if d.main then coroutine.resume(d.main, gamedata, id) end
-  coroutine.yield()
-  return control.drawer.co(gamedata, id)
-end
 function control.begin(gamedata, id)
   local co = coroutine.create(normal.begin)
-  gamedata.visual.drawers[id] = coroutine.create(control.drawer.co)
-  return control.run(gamedata, id, co)
+  return control.run(co, gamedata, id)
 end
-function control.run(gamedata, id, co)
-  --if input.ispressed(gamedata, evadekey) then
-  --  input.latch(gamedata, evadekey)
-  --  co = coroutine.create(evade.run)
-  --end
+
+function control.run(co, gamedata, id)
+  if input.ispressed(gamedata, keys.dash) then
+    input.latch(gamedata, keys.dash)
+    co = coroutine.create(evade.run)
+  end
   coroutine.resume(co, gamedata, id)
-  coroutine.yield()
-  local h = gamedata.health[id] or 0
-  local dmg = gamedata.damage[id] or 0
-  if h <= dmg then return dead.begin(gamedata, id) end
-  return control.run(gamedata, id, co)
+  return control.run(co, coroutine.yield())
+end
+
+function control.createdrawer(co)
+  --local co = coroutine.create(f)
+  local draw
+  draw = function(gamedata, id)
+    -- TODO: Draw global effects such as dash trail
+    coroutine.resume(co, gamedata, id)
+    return draw(coroutine.yield())
+  end
+  return coroutine.create(draw)
 end
 
 function actor.shalltear(gamedata, id, x, y)
+  -- Allocate table resources
+  -- Setup debug rendering info
+  local resim = gamedata.resource.images
+  local claimed = gamedata.actor.claimed
+  claimed[id] = {
+    animations = {
+      idle = initanimation(gamedata, resim[ims.idle], 48, 48, 0.3, 4),
+      run = initanimation(gamedata, resim[ims.run], 48, 48, 0.1, 8),
+      descend = initanimation(gamedata, resim[ims.descend], 48, 48, 0.1, 2),
+      ascend = initanimation(gamedata, resim[ims.ascend], 48, 48, 0.1, 2),
+      midair = initanimation(gamedata, resim[ims.midair], 48, 48, 0.05, 2),
+      evade = initanimation(gamedata, resim[ims.evade], 48, 48, 1, 1),
+    },
+    evadeparticle = initresource(
+      gamedata.particles, gfx.newParticleSystem, resim[ims.evade], 20
+    )
+  }
+  -- Setup spatial info
+  local act = gamedata.actor
+  gamedata.actor.x[id] = x
+  gamedata.actor.y[id] = y
+  gamedata.actor.width[id] = w
+  gamedata.actor.height[id] = h
+  gamedata.actor.vx[id] = 0
+  gamedata.actor.vy[id] = 0
+  gamedata.actor.face[id] = 1
+  --gamedata.actor.draw[id] = misc.createdrawer(
+  --  claimed[id].animations.idle
+  --)
+  --gamedata.actor.draw[id] = coroutine.create(normal.draw)
+  gamedata.actor.control[id] = coroutine.create(control.begin)
+  --[[
   gamedata.control[id] = coroutine.create(control.begin)
   gamedata.entity[id] = newEntity(x, y, w, h)
   gamedata.entity[id].mapCollisionCallback = function(e, _, _, cx, cy)
@@ -489,4 +253,5 @@ function actor.shalltear(gamedata, id, x, y)
   gamedata.reduce[id] = 1
   gamedata.soak[id] = 0
   gamedata.invincibility[id] = 0
+  ]]--
 end

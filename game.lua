@@ -26,7 +26,10 @@ function render.normal()
   gfx.setColor(255, 255, 255)
   local tmap = gamedata.resource.tilemaps[gamedata.global.level]
   --local pentity = gamedata.entity[gamedata.global.playerid]
-  local x, y = calculatecameracenter(tmap, pentity)
+  local pid = gamedata.global.playerid
+  local x, y = calculatecameracenter(
+    tmap, gamedata.actor.x[pid], gamedata.actor.y[pid]
+  )
   love.graphics.translate(x, y)
   -- Draw level tilemap
   coroutine.resume(gamedata.visual.leveldraw, gamedata, gamedata.global.level)
@@ -63,6 +66,24 @@ function render.normal()
     end
   end
   ]]--
+  local draworder = {}
+  for id, co in ipairs(gamedata.actor.draw) do
+    table.insert(draworder, id)
+  end
+  local pri = gamedata.visual.draworder
+  local sorter = function(a, b)
+    local orda = pri[a] or 0
+    local ordb = pri[b] or 0
+    if orda ~= ordb then
+      return orda < ordb
+    else
+      return a < b
+    end
+  end
+  table.sort(draworder, sorter)
+  for _, id in ipairs(draworder) do
+    coroutine.resume(gamedata.actor.draw[id], gamedata, id)
+  end
   love.graphics.setColor(255, 255, 255)
   -- Reset transforms
   love.graphics.origin()
@@ -71,19 +92,19 @@ function render.normal()
   -- Introduce normalize screen coordinates for UI drawing
   -- love.graphics.scale(gamedata.visual.width, gamedata.visual.width)
   love.graphics.scale(gamedata.visual.scale)
-  for id, d in pairs(gamedata.drawers.ui) do
+  for id, d in ipairs(gamedata.ui.draw) do
     coroutine.resume(d, gamedata, id)
   end
   -- Finally draw the time remaining
-  if gamedata.timeleft > roundtime * 0.5 then
+  if gamedata.mobolee.timeleft > roundtime * 0.5 then
     gfx.setColor(255, 255, 255)
-  elseif gamedata.timeleft > 10 then
+  elseif gamedata.mobolee.timeleft > 10 then
     gfx.setColor(255, 255, 0)
   else
     gfx.setColor(255, 0, 0)
   end
   gfx.print(
-    string.format("%02d", math.max(0, gamedata.timeleft)),
+    string.format("%02d", math.max(0, gamedata.mobolee.timeleft)),
     gamedata.visual.width / gamedata.visual.scale * 0.5, 0
   )
 end
@@ -92,7 +113,7 @@ end
 game = {}
 game.onground = function(gamedata, id)
   local buffer = 0.1 -- Add to global data if necessary
-  local g = gamedata.ground[id]
+  local g = gamedata.actor.ground[id]
   local t = gamedata.system.time
   return g and t - g < buffer
 end
@@ -103,7 +124,7 @@ end
 
 local function mainlogic(gamedata)
   -- Move all entities
-  local tmap = gamedata.resource.tilemaps[gamedata.global.activelevel]
+  local tmap = gamedata.resource.tilemaps[gamedata.global.level]
   local ac = gamedata.actor
   for id, _ in ipairs(ac.x) do
     local x, y, vx, vy, cx, cy = mapAdvanceEntity(tmap, "game", id, gamedata)
@@ -111,13 +132,14 @@ local function mainlogic(gamedata)
     ac.y[id] = y
     ac.vx[id] = vx
     ac.vy[id] = vy
+    if cy and cy < y then gamedata.actor.ground[id] = gamedata.system.time end
     local tco = ac.terrainco[id]
     if tco then coroutine.resume(tco, gamedata, id, cx, cy) end
   end
   -- Initiate all coroutines
   local colrequest = {}
-  for id, co in ipairs(gamedata.control) do
-    colrequest[id] = coroutine.resume(gamedata)
+  for id, co in ipairs(ac.control) do
+    colrequest[id] = coroutine.resume(co, gamedata, id)
   end
 
   -- Now hit detection on all registered hitboxes
@@ -153,6 +175,7 @@ end
 
 function game.init(gamedata)
   -- Do soft initialization here
+  gamedata.global.playerid = initactor(gamedata, actor.shalltear, 100, -100)
   --[[
   initactor(gamedata, actor.statsui)
   gamedata.global.playerid = initactor(gamedata, actor.shalltear, 100, -100)
@@ -178,7 +201,7 @@ function game.run(gamedata)
   mainlogic(gamedata)
   local pid = gamedata.global.playerid
   local actab = gamedata.actor
-  local phealth = actab.health[pid] or 0
+  local phealth = actab.health[pid] or 1
   local pdmg = actab.damage[pid] or 0
   gamedata.mobolee.timeleft = gamedata.mobolee.timeleft - gamedata.system.dt
   --[[

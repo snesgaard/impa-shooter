@@ -65,15 +65,14 @@ function createmapdrawer(mapkey)
   end)
   return co
 end
-function calculatecameracenter(map, entity)
-  if not entity then return 0, 0 end
+function calculatecameracenter(map, ex, ey)
+  ex = ex or 0
+  ey = ey or 0
   local mw = map.width * map.tilewidth
   local mh = map.height * map.tileheight
   local w = gamedata.visual.width
   local h = gamedata.visual.height
   local s = gamedata.visual.scale
-  local ex = entity.x
-  local ey = entity.y
   local x = math.min(map.x + mw - w / s, math.max(-map.x, ex - 0.5 * w / s))
   local my = math.floor(ey) + math.floor(0.5 * h / s)
   local y = math.max(map.y - mh + h / s, math.min(map.y, my))
@@ -149,60 +148,4 @@ function love.update(dt)
   gamedata.system.time = love.timer.getTime()
   gamedata.system.dt = dt
   coroutine.resume(gameco, gamedata)
-end
-
-function love.draw()
-  --love.graphics.scale(gamedata.visual.scale)
-  basecanvas:clear()
-  gfx.setCanvas(basecanvas)
-  gfx.setColor(70, 70, 120)
-  -- Setup camera translation
-  gfx.rectangle("fill", 0, 0, gamedata.visual.width, gamedata.visual.height)
-  gfx.setColor(255, 255, 255)
-  local tmap = gamedata.tilemaps[gamedata.game.activelevel]
-  local pentity = gamedata.entity[gamedata.game.playerid]
-  local x, y = calculatecameracenter(tmap, pentity)
-  love.graphics.translate(x, y)
-  -- Draw level tilemap
-  coroutine.resume(gamedata.visual.leveldraw, gamedata, gamedata.game.activelevel)
-  -- Setup actor drawing transforms
-  love.graphics.scale(1, -1)
-  -- First sort all actors according to layers
-  local sorted_drawers = {}
-  for id, d in pairs(gamedata.visual.drawers) do
-    local type = gamedata.actor[id]
-    local order = gamedata.visual.draworder[type] or -1
-    table.insert(sorted_drawers, {ord = order, id = id, co = d})
-  end
-  -- Sort according to layer or id
-  table.sort(sorted_drawers, function(t1, t2)
-    if t1.ord ~= t2.ord then
-      return t1.ord < t2.ord
-    else
-      return t1.id < t2.id
-    end
-  end)
-  -- Okay run drawing after sorting
-  for _, t in ipairs(sorted_drawers) do
-    coroutine.resume(t.co, gamedata, t.id)
-  end
-  -- Draw boxes if needed
-  if drawboxes then
-    for _, subhailer in pairs(drawhailers) do
-      for _, box in pairs(subhailer) do
-        drawhitbox(box)
-      end
-    end
-  end
-  love.graphics.setColor(255, 255, 255)
-  -- Reset transforms
-  love.graphics.origin()
-  gfx.setCanvas()
-  light.draw(gamedata, basecanvas, x, y)
-  -- Introduce normalize screen coordinates for UI drawing
-  -- love.graphics.scale(gamedata.visual.width, gamedata.visual.width)
-  love.graphics.scale(gamedata.visual.scale)
-  for id, d in pairs(gamedata.visual.uidrawers) do
-    coroutine.resume(d, gamedata, id)
-  end
 end

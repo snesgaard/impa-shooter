@@ -14,7 +14,6 @@ function allocresource(resource)
   resource.__seed__ = resource.__seed__ + 1
   return s
 end
-
 function freeresource(resource, id)
   table.insert(resource.__available_id__, id)
 end
@@ -25,6 +24,7 @@ gamedata = {
     dt = 0,
     pressed = {},
     released = {},
+    buffer = {},
   },
   global = {
     playerid,
@@ -72,8 +72,10 @@ gamedata = {
     ground = {},
     -- Input
     latch = {},
+    control = {},
+    draw = {},
+    drawtype = {},
   }),
-  control = createresource({}),
   hitbox = createresource({
     offx = {},
     offy = {},
@@ -83,6 +85,8 @@ gamedata = {
     hail = {},
   }),
   hitboxtypes = {},
+  particles = createresource({}),
+  animations = createresource({}),
   light = {
     point = createresource({
       x = {},
@@ -105,13 +109,14 @@ gamedata = {
     ambient = {
       color = {0, 0, 0},
       coeffecient = 0,
-    }
+    },
+    gamma = {1, 1, 1},
   },
-  drawers = {
-    world = createresource({}),
-    ui = createresource({}),
-    particles = createresource({}),
-  },
+  ui = createresource({
+    x = {},
+    y = {},
+    draw = {},
+  }),
   mobolee = {
     -- Horde mode data
     master = -1,
@@ -125,6 +130,18 @@ gamedata = {
 function initactor(gamedata, f, ...)
   local id = allocresource(gamedata.actor)
   f(gamedata, id, ...)
+  return id
+end
+
+function initanimation(gamedata, ...)
+  local id = allocresource(gamedata.animations)
+  gamedata.animations[id] = newAnimation(...)
+  return id
+end
+
+function initresource(resource, f, ...)
+  local id = allocresource(resource)
+  resource[id] = f(...)
   return id
 end
 

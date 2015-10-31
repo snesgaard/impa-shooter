@@ -39,24 +39,37 @@ light.draw = function(gamedata, canvas, x, y)
     att = {},
     count = 0,
   }
-  for id, a in ipairs(attenuation) do
+  for id, a in ipairs(lp.attenuation) do
     table.insert(lpdata.color, {lp.red[id], lp.green[id], lp.blue[id]})
     table.insert(lpdata.pos, {lp.x[id], lp.y[id], lp.z[id]})
     table.insert(lpdata.att, a)
     lpdata.count = lpdata.count + 1
   end
   shader:sendInt("lights", lpdata.count)
-  if light.point.count > 0 then
+  if lpdata.count > 0 then
     shader:send("lightcolor", unpack(lpdata.color))
     shader:send("lightpos", unpack(lpdata.pos))
     shader:send("attenuation", unpack(lpdata.att))
   end
   -- Submit orthogonal light sources
-  shader:sendInt("ortholights", light.ortho.count)
-  if light.ortho.count > 0 then
-    shader:send("orthocolor", unpack(light.ortho.color))
-    shader:send("orthodir", unpack(light.ortho.dir))
-    shader:send("orthocoeffecient", unpack(light.ortho.coeffecient))
+  local lo = light.ortho
+  local lodata = {
+    color = {},
+    dir = {},
+    coeff = {},
+    count = 0,
+  }
+  for id, c in ipairs(lo.coeffecient) do
+    table.insert(lodata.color, {lo.red[id], lo.green[id], lo.blue[id]})
+    table.insert(lodata.dir, {lo.dx[id], lo.dy[id], lo.dz[id]})
+    table.insert(lodata.coeff, c)
+    lodata.count = lodata.count + 1
+  end
+  shader:sendInt("ortholights", lodata.count)
+  if lodata.count > 0 then
+    shader:send("orthocolor", unpack(lodata.color))
+    shader:send("orthodir", unpack(lodata.dir))
+    shader:send("orthocoeffecient", unpack(lodata.coeff))
   end
   gfx.draw(canvas, 0, 0, 0, gamedata.visual.scale)
   gfx.setShader()
@@ -65,12 +78,12 @@ end
 local function setuppointlight(gamedata, color, pos, atten)
   local lp = gamedata.light.point
   local id = allocresource(lp)
-  lp.red[id] = color[0]
-  lp.green[id] = color[1]
-  lp.blue[id] = color[2]
-  lp.x[id] = pos[0]
-  lp.y[id] = pos[1]
+  lp.red[id] = color[1]
+  lp.green[id] = color[2]
+  lp.blue[id] = color[3]
+  lp.x[id] = pos[1]
   lp.y[id] = pos[2]
+  lp.z[id] = pos[3]
   lp.attenuation[id] = atten
   return id
 end
@@ -78,19 +91,19 @@ end
 local function setuportholight(gamedata, color, dir, coeff)
   local lo = gamedata.light.ortho
   local id = allocresource(lo)
-  lo.red[id] = color[0]
-  lo.green[id] = color[1]
-  lo.blue[id] = color[2]
-  lo.dx[id] = dir[0]
-  lo.dy[id] = dir[1]
-  lo.dz[id] = dir[2]
+  lo.red[id] = color[1]
+  lo.green[id] = color[2]
+  lo.blue[id] = color[3]
+  lo.dx[id] = dir[1]
+  lo.dy[id] = dir[2]
+  lo.dz[id] = dir[3]
   lo.coeffecient[id] = coeff
 end
 
 light.testsetup = function(gamedata)
   setuppointlight(gamedata, {1.0, 0.3, 0.3}, {200, -200, 30}, 1e-4)
-  setuppointlight(gamedata, {0.0, 0.1, 0.0}, {400, -200, 60}, 1e-5)
-  setuppointlight(gamedata, {0.0, 0.0, 0.1}, {600, -200, 60}, 1e-5)
+  setuppointlight(gamedata, {0.0, 1.0, 0.0}, {400, -200, 60}, 1e-4)
+  setuppointlight(gamedata, {0.0, 0.0, 1.0}, {600, -200, 60}, 1e-5)
 
   setuportholight(gamedata, {1, 1, 1}, {-1, 1, 1}, 0.5)
 
