@@ -188,11 +188,27 @@ function control.createdrawer(co)
   --local co = coroutine.create(f)
   local draw
   draw = function(gamedata, id)
+    local did = gamedata.actor.claimed[id].evadeparticle
+    local dashtrail = gamedata.particles[did]
     -- TODO: Draw global effects such as dash trail
     coroutine.resume(co, gamedata, id)
     return draw(coroutine.yield())
   end
   return coroutine.create(draw)
+end
+
+local function createevadeparticles(im)
+  local spray = gfx.newParticleSystem(im, 20)
+  spray:setEmissionRate(0)
+  spray:setSizes(1.0)
+  spray:setAreaSpread("normal", 0, 0)
+  spray:setInsertMode("random")
+  spray:setSizeVariation(0)
+  spray:setParticleLifetime(0.1, 0.1)
+  spray:setDirection(0)
+  spray:setLinearAcceleration(0, 0, 0, 0)
+  spray:setColors(255, 50, 50, 200, 255, 50, 100, 100)
+  return spray
 end
 
 function actor.shalltear(gamedata, id, x, y)
@@ -210,7 +226,7 @@ function actor.shalltear(gamedata, id, x, y)
       evade = initanimation(gamedata, resim[ims.evade], 48, 48, 1, 1),
     },
     evadeparticle = initresource(
-      gamedata.particles, gfx.newParticleSystem, resim[ims.evade], 20
+      gamedata.particles, createevadeparticles, resim[ims.evade]
     )
   }
   -- Setup spatial info
