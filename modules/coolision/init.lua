@@ -143,14 +143,27 @@ coolision.groupedcd = function(seekers, hailers, owner, xlow, xup, ylow, yup)
     isseeker[bid] = false
     table.insert(boxids, bid)
   end
+  --[[
+  print("wut?")
+  print("xlow")
+  table.foreach(xlow, print)
+  print("xup")
+  table.foreach(xup, print)
+  print("ylow")
+  table.foreach(ylow, print)
+  print("yup")
+  table.foreach(yup, print)
+  print("isseeker")
+  table.foreach(isseeker, print)
+  ]]--
   -- Sort by x-axis
   table.sort(boxids, function(a, b) return xlow[a] < xlow[b] end)
   local collisions = {}
-  for _, ida in pairs(boxids) do
+  for k, ida in pairs(boxids) do
     local potentialcol = {}
     for _, idb in next, boxids, k do
       if isseeker[ida] == not isseeker[idb] then
-        if not (xhigh[ida] < xlow[idb]) then
+        if not (xup[ida] < xlow[idb]) then
           table.insert(potentialcol, idb)
         else
           break
@@ -159,7 +172,7 @@ coolision.groupedcd = function(seekers, hailers, owner, xlow, xup, ylow, yup)
     end
     local cols = {}
     for _, idb in pairs(potentialcol) do
-      if not (yhigh[ida] < ylow[idb] or yhigh[idb] < ylow[ida]) then
+      if not (yup[ida] < ylow[idb] or yup[idb] < ylow[ida]) then
         table.insert(cols, owner[idb])
       end
     end
@@ -188,7 +201,7 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
   for id, boxids in ipairs(colrequests) do
     local ay = gamedata.actor.y[id] or 0
     for _, bid in ipairs(boxids) do
-      local ly = gamedata.hitbox.y[bid]
+      local ly = gamedata.hitbox.y[bid] + ay
       local hy = ly + gamedata.hitbox.height[bid]
       ylower[bid] = ly
       yupper[bid] = hy
@@ -215,23 +228,25 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
       end
     end
   end
-  return seekers, hailers, owner, xlower, xupper, ylower, yhigher
+  return seekers, hailers, owner, xlower, xupper, ylower, yupper
 end
 coolision.docollisiondetections = function(gamedata, colrequests)
   local s, h, o, xlow, xup, ylow, yup = coolision.sortcoolisiongroups(
     gamedata, colrequests
   )
   local allcols = {}
-  for type, subhailers in ipairs(h) do
-    local subseekers = seekers[type]
-    local coolisions = coolision.groupedcd(
-      subseekers, subhailers, o, xlow, xup, ylow, yup
-    )
-    for bid, coltable in ipairs(coolisions) do
-      local ownid = owner[bid]
-      local owntable = allcols[ownid] or {}
-      owntable[bid] = coltable
-      allcols[ownid] = owntable
+  for type, subhailers in pairs(h) do
+    local subseekers = s[type]
+    if subseekers then
+      local coolisions = coolision.groupedcd(
+        subseekers, subhailers, o, xlow, xup, ylow, yup
+      )
+      for bid, coltable in pairs(coolisions) do
+        local ownid = o[bid]
+        local owntable = allcols[ownid] or {}
+        owntable[bid] = coltable
+        allcols[ownid] = owntable
+      end
     end
   end
   return allcols
@@ -266,6 +281,15 @@ coolision.newAxisBox = function(id, x, y, w, h, hail, seek, callback)
   box.hail = hail
 
   return box
+end
+
+coolision.createaxisbox = function(hitbox, id, x, y, w, h, hail, seek)
+  hitbox.x[id] = x
+  hitbox.y[id] = y
+  hitbox.width[id] = w
+  hitbox.height[id] = h
+  hitbox.hail[id] = hail
+  hitbox.seek[id] = seek
 end
 
 coolision.setcallback = function(box, callback)

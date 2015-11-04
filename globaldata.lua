@@ -77,15 +77,19 @@ gamedata = {
     drawtype = {},
   }),
   hitbox = createresource({
-    offx = {},
-    offy = {},
+    x = {},
+    y = {},
     width = {},
     height = {},
     seek = {},
     hail = {},
   }),
   hitboxtypes = {},
-  particles = createresource({}),
+  particles = createresource({
+    x = {},
+    y = {},
+    system = {},
+  }),
   animations = createresource({}),
   light = {
     point = createresource({
@@ -141,7 +145,7 @@ end
 
 function initresource(resource, f, ...)
   local id = allocresource(resource)
-  resource[id] = f(...)
+  f(resource, id, ...)
   return id
 end
 

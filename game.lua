@@ -13,6 +13,14 @@ function inputhandler.keyreleased(key, isrepeat)
 end
 
 
+local renderbox = {
+  lx = {},
+  hx = {},
+  ly = {},
+  hy = {},
+  do_it = true
+}
+
 -- Rendering function
 local render = {}
 function render.normal()
@@ -85,6 +93,14 @@ function render.normal()
     coroutine.resume(gamedata.actor.draw[id], gamedata, id)
   end
   love.graphics.setColor(255, 255, 255)
+  if renderbox.do_it then
+    for bid, lx in pairs(renderbox.lx) do
+      local hx = renderbox.hx[bid]
+      local ly = renderbox.ly[bid]
+      local hy = renderbox.hy[bid]
+      gfx.rectangle("line", lx, hy, hx - lx, ly - hy)
+    end
+  end
   -- Reset transforms
   love.graphics.origin()
   gfx.setCanvas()
@@ -137,11 +153,20 @@ local function mainlogic(gamedata)
     if tco then coroutine.resume(tco, gamedata, id, cx, cy) end
   end
   -- Initiate all coroutines
+  -- Gather coolision requests
   local colrequest = {}
   for id, co in ipairs(ac.control) do
-    colrequest[id] = coroutine.resume(co, gamedata, id)
+    _, colrequest[id] = coroutine.resume(co, gamedata, id)
   end
-
+  local allcols = coolision.docollisiondetections(gamedata, colrequest)
+  if renderbox.do_it then
+    _, _, _, renderbox.lx, renderbox.hx, renderbox.ly, renderbox.hy = coolision.sortcoolisiongroups(gamedata, colrequest)
+  end
+  for id, _ in ipairs(colrequest) do
+    local subcol = allcols[id] or {}
+    local co = ac.control[id]
+    coroutine.resume(co, subcol)
+  end
   -- Now hit detection on all registered hitboxes
 
   -- Align lighyt with player

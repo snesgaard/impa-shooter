@@ -101,12 +101,12 @@ local function setuportholight(gamedata, color, dir, coeff)
 end
 
 light.testsetup = function(gamedata)
-  setuppointlight(gamedata, {1.0, 0.3, 0.3}, {200, -200, 30}, 1e-4)
-  setuppointlight(gamedata, {0.0, 1.0, 0.0}, {400, -200, 60}, 1e-4)
-  setuppointlight(gamedata, {0.0, 0.0, 1.0}, {600, -200, 60}, 1e-5)
+  --setuppointlight(gamedata, {1.0, 0.3, 0.3}, {200, -200, 30}, 1e-4)
+  --setuppointlight(gamedata, {0.0, 1.0, 0.0}, {400, -200, 60}, 1e-4)
+  --setuppointlight(gamedata, {0.0, 0.0, 1.0}, {600, -200, 60}, 1e-5)
 
-  setuportholight(gamedata, {1, 1, 1}, {-1, 1, 1}, 0.5)
+  setuportholight(gamedata, {1, 1, 1}, {-1, 1, 1}, 0.05)
 
-  gamedata.light.ambient.coeffecient = 0.5
+  gamedata.light.ambient.coeffecient = 0.00
   gamedata.light.ambient.color = {1, 1, 1}
 end
