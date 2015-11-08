@@ -209,24 +209,30 @@ function evade.run(gamedata, id)
   return normal.begin(gamedata, id, gamedata.system.time)
 end
 
+clawa.aframes = 4
 clawa.atime = 0.2
 clawa.rtime = 0.3
+clawa.aframetime = clawa.atime / clawa.aframes
 function clawa.abegin(gamedata, id)
   gamedata.actor.draw[id] = control.createdrawer(misc.createdrawer(
     gamedata.actor.claimed[id].animations.clawa, "once"
   ))
   turn(gamedata, id)
   local timer = misc.createtimer(gamedata, clawa.atime)
-  return clawa.arun(timer, gamedata, id)
+  local boxtimer = misc.createinterval(
+    gamedata, clawa.aframetime * 2, clawa.aframetime
+  )
+  return clawa.arun(timer, boxtimer, gamedata, id)
 end
 
-function clawa.arun(timer, gamedata, id)
+function clawa.arun(timer, boxtimer, gamedata, id)
   gamedata.actor.vx[id] = 0
   local bid = gamedata.actor.claimed[id].hitbox.clawa
-  local coolision = coroutine.yield({bid})
-  table.foreach(coolision[bid] or {}, print)
+  if boxtimer(gamedata) then
+    local coolision = coroutine.yield({bid})
+  end
   if timer(gamedata) then
-    return clawa.arun(timer, coroutine.yield())
+    return clawa.arun(timer, boxtimer, coroutine.yield())
   else
     return clawa.rbegin(coroutine.yield())
   end
@@ -251,25 +257,31 @@ function clawa.rrun(timer, gamedata, id)
   end
 end
 
+clawb.aframes = 4
 clawb.atime = 0.2
 clawb.rtime = 0.3
+clawb.aframetime = clawb.atime / clawb.aframes
 function clawb.abegin(gamedata, id)
   gamedata.actor.draw[id] = control.createdrawer(misc.createdrawer(
     gamedata.actor.claimed[id].animations.clawb, "once"
   ))
   turn(gamedata, id)
   local timer = misc.createtimer(gamedata, clawb.atime)
-  return clawb.arun(timer, gamedata, id)
+  local boxtimer = misc.createinterval(
+    gamedata, clawb.aframetime * 2, clawb.aframetime
+  )
+  return clawb.arun(timer, boxtimer, gamedata, id)
 end
 
-function clawb.arun(timer, gamedata, id)
+function clawb.arun(timer, boxtimer, gamedata, id)
   gamedata.actor.vx[id] = 0
   local bid = gamedata.actor.claimed[id].hitbox.clawb
-  local coolisions = coroutine.yield({bid})
+  if boxtimer(gamedata) then
+    local coolisions = coroutine.yield({bid})
+  end
   if timer(gamedata) then
-    return clawb.arun(timer, coroutine.yield())
+    return clawb.arun(timer, boxtimer, coroutine.yield())
   else
-    --return clawa.rbegin(coroutine.yield())
     return clawb.rbegin(coroutine.yield())
   end
 end
@@ -293,25 +305,31 @@ function clawb.rrun(timer, gamedata, id)
   end
 end
 
-clawc.atime = 0.2
-clawc.rtime = 0.3
+clawc.aframes = 4
+clawc.atime = 0.4
+clawc.rtime = 0.4
+clawc.aframetime = clawc.atime / clawc.aframes
 function clawc.abegin(gamedata, id)
   gamedata.actor.draw[id] = control.createdrawer(misc.createdrawer(
     gamedata.actor.claimed[id].animations.clawc, "once"
   ))
   turn(gamedata, id)
   local timer = misc.createtimer(gamedata, clawc.atime)
-  return clawc.arun(timer, gamedata, id)
+  local boxtimer = misc.createinterval(
+    gamedata, clawc.aframetime * 2, clawc.aframetime
+  )
+  return clawc.arun(timer, boxtimer, gamedata, id)
 end
 
-function clawc.arun(timer, gamedata, id)
+function clawc.arun(timer, boxtimer, gamedata, id)
   gamedata.actor.vx[id] = 0
   local bid = gamedata.actor.claimed[id].hitbox.clawc
-  local coolisions = coroutine.yield({bid})
+  if boxtimer(gamedata) then
+    local coolisions = coroutine.yield({bid})
+  end
   if timer(gamedata) then
-    return clawc.arun(timer, coroutine.yield())
+    return clawc.arun(timer, boxtimer, coroutine.yield())
   else
-    --return clawa.rbegin(coroutine.yield())
     return clawc.rbegin(coroutine.yield())
   end
 end
@@ -327,9 +345,12 @@ end
 function clawc.rrun(timer, gamedata, id)
   gamedata.actor.vx[id] = 0
   if not timer(gamedata) or input.ispressed(gamedata, keys.jump) then
+    if input.ispressed(gamedata, keys.attack) then
+      input.latch(gamedata, keys.attack)
+      return clawa.abegin(coroutine.yield())
+    end
+    gamedata, id = coroutine.yield()
     return normal.begin(gamedata, id, gamedata.system.time)
-  --elseif input.ispressed(gamedata, keys.attack) then
-  --  return clawb.abegin(coroutine.yield())
   else
     return clawc.rrun(timer, coroutine.yield())
   end
@@ -345,16 +366,20 @@ function control.run(co, gamedata, id)
     input.latch(gamedata, keys.dash)
     co = coroutine.create(evade.run)
   end
+
   local _, activehitbox = coroutine.resume(co, gamedata, id)
   activehitbox = activehitbox or {}
   local resume_inner = #activehitbox > 0
   local hb = gamedata.actor.claimed[id].hitbox
+  table.insert(activehitbox, hb.body)
+  local collisions = coroutine.yield(activehitbox)
+
   local lid = gamedata.actor.claimed[id].light
   gamedata.light.point.x[lid] = gamedata.actor.x[id]
   gamedata.light.point.y[lid] = gamedata.actor.y[id]
-  table.insert(activehitbox, hb.body)
-  --table.insert(activehitbox, hb.anti)
-  local collisions = coroutine.yield(activehitbox)
+
+  -- HACK
+  healthdisplay.add(gamedata, id)
 
   if resume_inner then coroutine.resume(co, collisions) end
 
@@ -441,19 +466,19 @@ function actor.shalltear(gamedata, id, x, y)
       ),
       -- Attack animations
       clawa = initanimation(
-        gamedata, resim[ims.clawa], 48, 48, clawa.atime / 4, 4
+        gamedata, resim[ims.clawa], 48, 48, clawa.aframetime, clawa.aframes
       ),
       clawarec = initanimation(
         gamedata, resim[ims.clawarec], 48, 48, clawa.rtime / 7, 7
       ),
       clawb = initanimation(
-        gamedata, resim[ims.clawb], 48, 48, clawb.atime / 4, 4
+        gamedata, resim[ims.clawb], 48, 48, clawb.aframetime, clawb.aframes
       ),
       clawbrec = initanimation(
         gamedata, resim[ims.clawbrec], 48, 48, clawb.rtime / 3, 3
       ),
       clawc = initanimation(
-        gamedata, resim[ims.clawc], 96, 48, clawc.atime / 4, 4
+        gamedata, resim[ims.clawc], 96, 48, clawc.aframetime, clawc.aframes
       ),
       clawcrec = initanimation(
         gamedata, resim[ims.clawcrec], 96, 48, clawc.rtime / 3, 3
@@ -469,7 +494,7 @@ function actor.shalltear(gamedata, id, x, y)
       ),
       clawa = initresource(
         gamedata.hitbox, coolision.createaxisbox, 0, -5, 23, 15, nil,
-        gamedata.hitboxtypes.enemybody
+        gamedata.hitboxtypes.allybody
       ),
       clawb = initresource(
         gamedata.hitbox, coolision.createaxisbox, -3, -5, 27, 17, nil,
@@ -492,6 +517,7 @@ function actor.shalltear(gamedata, id, x, y)
   gamedata.actor.vy[id] = 0
   gamedata.actor.face[id] = 1
   gamedata.actor.invincibility[id] = 0
+  act.health[id] = 6
   --gamedata.actor.draw[id] = misc.createdrawer(
   --  claimed[id].animations.idle
   --)

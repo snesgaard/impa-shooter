@@ -3,6 +3,16 @@ require "math"
 -- Table which will contain values related to the combat engine
 combat = {}
 
+combat.createoneshotdamage = function(fid, dmg)
+  local cache = {}
+  local f = function(gamedata, tid)
+    if cache[tid] then return end
+    cache[tid] = true
+    return combat.damage(gamedata, fid, tid, dmg)
+  end
+  return f
+end
+
 -- Damange is calcuated based on defensive values
 combat.calculatedamage = function(damage, soak, reduce, invicibility)
   if invicibility and invicibility > 0 then return 0 end
@@ -72,6 +82,23 @@ function combat.dodamage(gamedata, id, dmg, soak, reduce, invicibility)
   gamedata.init(gamedata, actor.damagenumber, e.x, e.y + 20, d, 0.5)
   gamedata.damage[id] = (gamedata.damage[id] or 0) + d
   return d
+end
+
+local function _do_nothing(_, _, dmg)
+  return dmg
+end
+
+function combat.damage(gamedata, fid, tid, dmg)
+  local act = gamedata.actor
+  local s = act.soak[tid] or 0
+  local r = act.reduce[tid] or 1
+  local i = act.invincibility[tid] or 0
+  if i > 0 then return 0 end
+  local predmg = math.max(0, r * (dmg - s))
+  local f = act.ondamagetaken[tid] or _do_nothing
+  local postdmg = f(gamedata, tid, fid, predmg) or predmg
+  act.damage[tid] = (act.damage[tid] or 0) + postdmg
+  return postdmg
 end
 
 return combat

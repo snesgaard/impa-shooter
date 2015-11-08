@@ -68,6 +68,8 @@ gamedata = {
     reduce = {},
     invincibility = {},
     speed = {},
+    -- Call back for damage reaction
+    ondamagetaken = {},
     -- Control related scripts
     ground = {},
     -- Input

@@ -105,8 +105,8 @@ light.testsetup = function(gamedata)
   --setuppointlight(gamedata, {0.0, 1.0, 0.0}, {400, -200, 60}, 1e-4)
   --setuppointlight(gamedata, {0.0, 0.0, 1.0}, {600, -200, 60}, 1e-5)
 
-  setuportholight(gamedata, {1, 1, 1}, {-1, 1, 1}, 0.05)
+  setuportholight(gamedata, {1, 1, 1}, {-1, 1, 1}, 0.0)
 
-  gamedata.light.ambient.coeffecient = 0.00
+  gamedata.light.ambient.coeffecient = 0.75
   gamedata.light.ambient.color = {1, 1, 1}
 end

@@ -170,13 +170,16 @@ coolision.groupedcd = function(seekers, hailers, owner, xlow, xup, ylow, yup)
         end
       end
     end
-    local cols = {}
     for _, idb in pairs(potentialcol) do
       if not (yup[ida] < ylow[idb] or yup[idb] < ylow[ida]) then
-        table.insert(cols, owner[idb])
+        local sid = isseeker[ida] and ida or idb
+        local hid = sid == ida and idb or ida
+        local cols = collisions[sid] or {}
+        table.insert(cols, owner[hid])
+        collisions[sid] = cols
       end
     end
-    collisions[ida] = cols
+    --collisions[ida] = cols
   end
   return collisions
 end

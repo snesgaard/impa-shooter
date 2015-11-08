@@ -43,6 +43,16 @@ misc.createtimer = function(gamedata, duration)
     return gamedata.system.time - start < duration
   end
 end
+misc.createinterval = function(gamedata, start, duration)
+  local stamp = gamedata.system.time
+  local stoptime = start + duration
+  return function(gamedata)
+    local t = gamedata.system.time
+    local dostart = t - stamp > start
+    local dostop = t - stamp > stoptime
+    return dostart and not dostop
+  end
+end
 misc.wait = function(gamedata, duration)
   local timer = misc.createtimer(gamedata.system.time, duration)
   while timer(gamedata.system.time) do coroutine.yield() end

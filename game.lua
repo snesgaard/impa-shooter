@@ -1,3 +1,4 @@
+require "ui/healthdisplay"
 -- Defines
 local roundtime = 60
 --local roundtime = 1.0
@@ -18,7 +19,7 @@ local renderbox = {
   hx = {},
   ly = {},
   hy = {},
-  do_it = true
+  do_it = false
 }
 
 -- Rendering function
@@ -92,6 +93,7 @@ function render.normal()
   for _, id in ipairs(draworder) do
     coroutine.resume(gamedata.actor.draw[id], gamedata, id)
   end
+  healthdisplay.draw(gamedata)
   love.graphics.setColor(255, 255, 255)
   if renderbox.do_it then
     for bid, lx in pairs(renderbox.lx) do
@@ -167,6 +169,7 @@ local function mainlogic(gamedata)
     local co = ac.control[id]
     coroutine.resume(co, subcol)
   end
+  healthdisplay.update(gamedata)
   -- Now hit detection on all registered hitboxes
 
   -- Align lighyt with player
