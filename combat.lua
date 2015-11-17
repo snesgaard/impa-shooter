@@ -84,7 +84,7 @@ function combat.dodamage(gamedata, id, dmg, soak, reduce, invicibility)
   return d
 end
 
-local function _do_nothing(_, _, dmg)
+local function _do_nothing(_, _, _, dmg)
   return dmg
 end
 
@@ -98,6 +98,7 @@ function combat.damage(gamedata, fid, tid, dmg)
   local f = act.ondamagetaken[tid] or _do_nothing
   local postdmg = f(gamedata, tid, fid, predmg) or predmg
   act.damage[tid] = (act.damage[tid] or 0) + postdmg
+  if healthdisplay then healthdisplay.add(gamedata, tid) end
   return postdmg
 end
 

@@ -12,6 +12,7 @@ require ("actors/box")
 require ("actors/impa")
 require ("actors/mobolee")
 require ("actors/shalltear")
+require ("actors/knight")
 require ("actors/moboleemaster")
 require "statsui"
 require ("modules/functional")
@@ -125,6 +126,7 @@ function love.load()
   loaders.mobolee(gamedata)
   loaders.light(gamedata)
   loaders.shalltear(gamedata)
+  loaders.knight(gamedata)
   -- Canvas
   --basecanvas = gfx.newCanvas(
   --  gamedata.visual.width, gamedata.visual.height

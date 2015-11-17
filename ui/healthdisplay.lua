@@ -29,8 +29,8 @@ end
 
 function healthdisplay.draw(gamedata)
   local act = gamedata.actor
-  gfx.setColor(138, 7, 7)
   for id, _ in pairs(active) do
+    gfx.setColor(138, 7, 7)
     local x = math.floor(act.x[id])
     local y = math.floor(act.y[id])
     local h = math.floor(act.height[id] * 1.4)
@@ -43,7 +43,8 @@ function healthdisplay.draw(gamedata)
       gfx.rectangle("fill", tx, y + h, bsize, bsize)
     end
     local remaining = srender > 0 and maxbig - brender or 0
-    gfx.setColor(25, 15, 100)
+    --gfx.setColor(25, 15, 100)
+    gfx.setColor(150, 120, 20)
     for dx = 1, remaining do
       local sx = (bsize + 2)
       local tx = x + (dx + brender) * sx - sx * (maxbig + 1) * 0.5

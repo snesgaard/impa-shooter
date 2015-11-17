@@ -85,54 +85,10 @@ coolision.collisiondetect = function(axisboxtable, x, y)
 
   return collisiontable
 end
---[[
-coolision.groupedcd = function(seekers, hailers, x, y)
-  if #seekers == 0 or #hailers == 0 then return {} end
-  -- Concatenate tables and assign labels
-  local groupboxtable = {}
-  table.foreach(seekers,
-    function(k, v)
-      table.insert(groupboxtable, {isseeker = true, box = v})
-    end
-  )
-  table.foreach(hailers,
-    function(k, v)
-      table.insert(groupboxtable, {isseeker = false, box = v})
-    end
-  )
-  -- Sort with respect to specified axis
-  groupedsort(groupboxtable, x, y)
-  -- Seek collisions along sorted axis
-  local collisiontable = {}
-  for k, groupa in pairs(groupboxtable) do
-    local potentialcol = {}
-    for _, groupb in next, groupboxtable, k do
-      if xoverlaptest(groupa.box, groupb.box) then
-        -- Only add if grouping was different
-        if groupa.isseeker == not groupb.isseeker then
-          table.insert(potentialcol, groupb)
-        end
-      else
-        break
-      end
-    end
-    -- check for y collision and register
-    local cola = {}
-    for _, groupb in pairs(potentialcol) do
-      if yoverlaptest(groupa.box, groupb.box) then
-        table.insert(cola, groupb.box)
-      end
-    end
-    if #cola > 0 then
-      collisiontable[groupa.box] = cola
-    end
-  end
 
-  return collisiontable
-end
-]]--
-
-coolision.groupedcd = function(seekers, hailers, owner, xlow, xup, ylow, yup)
+coolision.groupedcd = function(
+  seekers, hailers, owner, xlow, xup, ylow, yup, collisions
+)
   local isseeker = {}
   local boxids = {}
   for _, bid in ipairs(seekers) do
@@ -158,7 +114,9 @@ coolision.groupedcd = function(seekers, hailers, owner, xlow, xup, ylow, yup)
   ]]--
   -- Sort by x-axis
   table.sort(boxids, function(a, b) return xlow[a] < xlow[b] end)
-  local collisions = {}
+  for _, sid in ipairs(seekers) do
+    collisions[sid] = collisions[sid] or {}
+  end
   for k, ida in pairs(boxids) do
     local potentialcol = {}
     for _, idb in next, boxids, k do
@@ -171,12 +129,10 @@ coolision.groupedcd = function(seekers, hailers, owner, xlow, xup, ylow, yup)
       end
     end
     for _, idb in pairs(potentialcol) do
-      if not (yup[ida] < ylow[idb] or yup[idb] < ylow[ida]) then
+      if not (yup[ida] < ylow[idb] or yup[idb] < ylow[ida]) and owner[ida] ~= owner[idb] then
         local sid = isseeker[ida] and ida or idb
         local hid = sid == ida and idb or ida
-        local cols = collisions[sid] or {}
-        table.insert(cols, owner[hid])
-        collisions[sid] = cols
+        table.insert(collisions[sid], owner[hid])
       end
     end
     --collisions[ida] = cols
@@ -217,14 +173,18 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
   for id, boxids in ipairs(colrequests) do
     for _, bid in ipairs(boxids) do
       owner[bid] = id
-      local s = gamedata.hitbox.seek[bid]
-      if s then
+      --local s = gamedata.hitbox.seek[bid]
+      --if s then
+      --print(#gamedata.hitbox.seek[bid])
+      for _, s in ipairs(gamedata.hitbox.seek[bid]) do
+        --print("seek plza", bid, s)
         local seektable = seekers[s] or {}
         table.insert(seektable, bid)
         seekers[s] = seektable
       end
-      local h = gamedata.hitbox.hail[bid]
-      if h then
+      --local h = gamedata.hitbox.hail[bid]
+      --if h then
+      for _, h in ipairs(gamedata.hitbox.hail[bid]) do
         local hailtable = hailers[h] or {}
         table.insert(hailtable, bid)
         hailers[h] = hailtable
@@ -238,36 +198,32 @@ coolision.docollisiondetections = function(gamedata, colrequests)
     gamedata, colrequests
   )
   local allcols = {}
+  -- Ensure that all seekers have at least an empty coolision table
+  for type, subseekers in pairs(s) do
+    for _, sid in pairs(subseekers) do
+      --print("seek", type)
+      local ownid = o[sid]
+      allcols[ownid] = {}
+      allcols[ownid][sid] = {}
+    end
+  end
+  local collisions = {}
   for type, subhailers in pairs(h) do
+    --print("hail", type)
     local subseekers = s[type]
     if subseekers then
-      local coolisions = coolision.groupedcd(
-        subseekers, subhailers, o, xlow, xup, ylow, yup
+      coolision.groupedcd(
+        subseekers, subhailers, o, xlow, xup, ylow, yup, collisions
       )
-      for bid, coltable in pairs(coolisions) do
-        local ownid = o[bid]
-        local owntable = allcols[ownid] or {}
-        owntable[bid] = coltable
-        allcols[ownid] = owntable
-      end
     end
+  end
+  for bid, coltable in pairs(collisions) do
+    local ownid = o[bid]
+    local owntable = allcols[ownid]
+    owntable[bid] = coltable
   end
   return allcols
 end
---[[
-coolision.docollisiongroups = function(seekers, hailers)
-  for type, subhailers in pairs(hailers) do
-    local subseekers = seekers[type] or {}
-    local collisiontable = coolision.groupedcd(subseekers, subhailers, 1, 0)
-    for boxa, coolisions in pairs(collisiontable) do
-      for _, boxb in pairs(coolisions) do
-        if boxa.hitcallback then boxa.hitcallback(boxa, boxb) end
-        if boxb.hitcallback then boxb.hitcallback(boxb, boxa) end
-      end
-    end
-  end
-end
-]]--
 
 coolision.newAxisBox = function(id, x, y, w, h, hail, seek, callback)
   local box = {}
@@ -291,6 +247,8 @@ coolision.createaxisbox = function(hitbox, id, x, y, w, h, hail, seek)
   hitbox.y[id] = y
   hitbox.width[id] = w
   hitbox.height[id] = h
+  if type(hail) ~= "table" then hail = {hail} end
+  if type(seek) ~= "table" then seek = {seek} end
   hitbox.hail[id] = hail
   hitbox.seek[id] = seek
 end

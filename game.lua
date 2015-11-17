@@ -22,6 +22,8 @@ local renderbox = {
   do_it = false
 }
 
+local knight
+
 -- Rendering function
 local render = {}
 function render.normal()
@@ -204,14 +206,8 @@ end
 function game.init(gamedata)
   -- Do soft initialization here
   gamedata.global.playerid = initactor(gamedata, actor.shalltear, 100, -100)
-  --[[
-  initactor(gamedata, actor.statsui)
-  gamedata.global.playerid = initactor(gamedata, actor.shalltear, 100, -100)
-  --initactor(gamedata, actor.mobolee, 600, -100)
-  gamedata.moboleemaster = initactor(
-    gamedata, actor.moboleemaster, 100, 600, -110, -100, 30, 0.3
-  )
-  ]]--
+  initactor(gamedata, actor.knight, 300, -200)
+  initactor(gamedata, actor.knight, 310, -200)
   gamedata.visual.basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height
   )

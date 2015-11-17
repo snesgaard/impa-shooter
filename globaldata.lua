@@ -170,6 +170,7 @@ local hitboxtypes = {
   "allybody",
   "allyprojectile",
   "allyactive",
+  "barrier",
 }
 
 for id, ent in pairs(hitboxtypes) do
