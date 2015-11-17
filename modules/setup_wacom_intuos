@@ -1,0 +1,39 @@
+#!/bin/bash
+
+FOCUSMONITOR=$1
+
+
+WACOMSET="xsetwacom set"
+STYLUS="Wacom Intuos PT S Pen stylus"
+ERASER="Wacom Intuos PT S Pen eraser"
+FINGERPAD="Wacom Intuos PT S Pad pad"
+FINGERTOUCH="Wacom Intuos PT S Finger touch"
+
+LOWERBUTTON="Button 2"
+TOPBUTTON="Button 3"
+
+LEFTBOTTOM="Button 1"
+LEFTTOP="Button 3"
+RIGHTBOTTOM="Button 8"
+RIGHTTOP="Button 9"
+
+# Bind lower button to CTRL + Z
+$WACOMSET "$STYLUS" $LOWERBUTTON "key ctrl" "z"
+# Bind upper button to middle mouse (drag things around)
+$WACOMSET "$STYLUS" $TOPBUTTON 2
+# Bind lower left to ctrl for color dipping
+$WACOMSET "$FINGERPAD" $LEFTBOTTOM "key ctrl"
+# Bind lower right to zoom out
+$WACOMSET "$FINGERPAD" $RIGHTBOTTOM "key -"
+# Bind upper right to zoom in
+$WACOMSET "$FINGERPAD" $RIGHTTOP "key alt" "o"
+# Bind upper button to CTRL + Z for eraser
+$WACOMSET "$ERASER" $TOPBUTTON "key ctrl" "z"
+# Bind lower button to middle mouse (drag things around) for eraser
+$WACOMSET "$ERASER" $LOWERBUTTON 2
+
+# Bind to primary monitor
+if [[ "$1" != "" ]]; then
+  $WACOMSET "$STYLUS" MapToOutput $FOCUSMONITOR
+  $WACOMSET "$ERASER" MapToOutput $FOCUSMONITOR
+fi
