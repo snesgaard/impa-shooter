@@ -206,8 +206,8 @@ end
 function game.init(gamedata)
   -- Do soft initialization here
   gamedata.global.playerid = initactor(gamedata, actor.shalltear, 100, -100)
-  initactor(gamedata, actor.knight, 300, -200)
-  initactor(gamedata, actor.knight, 310, -200)
+  initactor(gamedata, actor.knight, 300, -140)
+  initactor(gamedata, actor.knight, 310, -140)
   gamedata.visual.basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height
   )

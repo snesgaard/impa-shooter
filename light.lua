@@ -107,6 +107,6 @@ light.testsetup = function(gamedata)
 
   setuportholight(gamedata, {1, 1, 1}, {-1, 1, 1}, 0.0)
 
-  gamedata.light.ambient.coeffecient = 0.5
+  gamedata.light.ambient.coeffecient = 0.2
   gamedata.light.ambient.color = {1, 1, 1}
 end
