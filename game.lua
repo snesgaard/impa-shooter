@@ -1,4 +1,5 @@
 require "ui/healthdisplay"
+require "ui/playerhealth"
 -- Defines
 local roundtime = 60
 --local roundtime = 1.0
@@ -146,7 +147,7 @@ local function mainlogic(gamedata)
   -- Move all entities
   local tmap = gamedata.resource.tilemaps[gamedata.global.level]
   local ac = gamedata.actor
-  for id, _ in ipairs(ac.x) do
+  for id, _ in pairs(ac.x) do
     local x, y, vx, vy, cx, cy = mapAdvanceEntity(tmap, "game", id, gamedata)
     ac.x[id] = x
     ac.y[id] = y
@@ -159,14 +160,14 @@ local function mainlogic(gamedata)
   -- Initiate all coroutines
   -- Gather coolision requests
   local colrequest = {}
-  for id, co in ipairs(ac.control) do
+  for id, co in pairs(ac.control) do
     _, colrequest[id] = coroutine.resume(co, gamedata, id)
   end
   local allcols = coolision.docollisiondetections(gamedata, colrequest)
   if renderbox.do_it then
     _, _, _, renderbox.lx, renderbox.hx, renderbox.ly, renderbox.hy = coolision.sortcoolisiongroups(gamedata, colrequest)
   end
-  for id, _ in ipairs(colrequest) do
+  for id, _ in pairs(colrequest) do
     local subcol = allcols[id] or {}
     local co = ac.control[id]
     coroutine.resume(co, subcol)
@@ -205,9 +206,10 @@ end
 
 function game.init(gamedata)
   -- Do soft initialization here
-  gamedata.global.playerid = initactor(gamedata, actor.shalltear, 100, -100)
-  initactor(gamedata, actor.knight, 300, -140)
+  gamedata.global.playerid = initactor(gamedata, actor.shalltear, 100, -140)
+  initactor(gamedata, actor.knight, 150, -140)
   initactor(gamedata, actor.knight, 310, -140)
+  initresource(gamedata.ui, actor.playerhealth, 0, 0, gamedata.global.playerid)
   gamedata.visual.basecanvas = gfx.newCanvas(
     gamedata.visual.width, gamedata.visual.height
   )

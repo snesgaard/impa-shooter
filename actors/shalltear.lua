@@ -225,6 +225,7 @@ function airevade.begin(gamedata, id)
   spray:start()
   spray:setRotation(0.5 * (f + 1) * math.pi)
   spray:setDirection(0.5 * (f - 1) * math.pi)
+  gamedata.actor.invincibility[id] = gamedata.actor.invincibility[id] + 1
   return airevade.run(sid, gamedata, id)
 end
 function airevade.run(sid, gamedata, id)
@@ -237,6 +238,7 @@ function airevade.run(sid, gamedata, id)
   spray:setPosition(0, act.y[id])
   if game.onground(gamedata, id) then
     spray:stop()
+    gamedata.actor.invincibility[id] = gamedata.actor.invincibility[id] - 1
     return evade.run(gamedata, id)
   else
     return airevade.run(sid, coroutine.yield())
@@ -585,5 +587,7 @@ function actor.shalltear(gamedata, id, x, y)
   gamedata.actor.face[id] = 1
   gamedata.actor.invincibility[id] = 0
   act.health[id] = 20
+  act.stamina[id] = 4
+  act.usedstamina[id] = 1.99
   gamedata.actor.control[id] = coroutine.create(control.begin)
 end

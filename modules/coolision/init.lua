@@ -91,11 +91,11 @@ coolision.groupedcd = function(
 )
   local isseeker = {}
   local boxids = {}
-  for _, bid in ipairs(seekers) do
+  for _, bid in pairs(seekers) do
     isseeker[bid] = true
     table.insert(boxids, bid)
   end
-  for _, bid in ipairs(hailers) do
+  for _, bid in pairs(hailers) do
     isseeker[bid] = false
     table.insert(boxids, bid)
   end
@@ -114,7 +114,7 @@ coolision.groupedcd = function(
   ]]--
   -- Sort by x-axis
   table.sort(boxids, function(a, b) return xlow[a] < xlow[b] end)
-  for _, sid in ipairs(seekers) do
+  for _, sid in pairs(seekers) do
     collisions[sid] = collisions[sid] or {}
   end
   for k, ida in pairs(boxids) do
@@ -145,7 +145,7 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
   -- style
   local xlower = {}
   local xupper = {}
-  for id, boxids in ipairs(colrequests) do
+  for id, boxids in pairs(colrequests) do
     local ax = gamedata.actor.x[id] or 0
     local f = gamedata.actor.face[id]
     for _, bid in ipairs(boxids) do
@@ -157,7 +157,7 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
   end
   local ylower = {}
   local yupper = {}
-  for id, boxids in ipairs(colrequests) do
+  for id, boxids in pairs(colrequests) do
     local ay = gamedata.actor.y[id] or 0
     for _, bid in ipairs(boxids) do
       local ly = gamedata.hitbox.y[bid] + ay
@@ -170,13 +170,13 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
   local seekers = {}
   local hailers = {}
   local owner = {}
-  for id, boxids in ipairs(colrequests) do
+  for id, boxids in pairs(colrequests) do
     for _, bid in ipairs(boxids) do
       owner[bid] = id
       --local s = gamedata.hitbox.seek[bid]
       --if s then
       --print(#gamedata.hitbox.seek[bid])
-      for _, s in ipairs(gamedata.hitbox.seek[bid]) do
+      for _, s in pairs(gamedata.hitbox.seek[bid]) do
         --print("seek plza", bid, s)
         local seektable = seekers[s] or {}
         table.insert(seektable, bid)
@@ -184,7 +184,7 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
       end
       --local h = gamedata.hitbox.hail[bid]
       --if h then
-      for _, h in ipairs(gamedata.hitbox.hail[bid]) do
+      for _, h in pairs(gamedata.hitbox.hail[bid]) do
         local hailtable = hailers[h] or {}
         table.insert(hailtable, bid)
         hailers[h] = hailtable

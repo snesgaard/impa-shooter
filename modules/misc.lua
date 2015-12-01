@@ -28,7 +28,7 @@ misc.createdrawer = function(animeid, mode, ox, oy)
     local anime = gamedata.animations[animeid]
     local act = gamedata.actor
     local f = act.face[id]
-    local x = act.x[id] - f * w + ox
+    local x = act.x[id] - f * (w + ox)
     local y = act.y[id] + h + oy
     anime:draw(math.floor(x), math.floor(y), 0, f, -1)
     anime:update(gamedata.system.dt)

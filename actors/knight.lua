@@ -8,14 +8,19 @@ local w = 5
 local h = 22
 local speed = 80
 local pfollow = {w = 600, h = 5}
-local phit = {w = 40, h = 22}
+local phit = {w = 52, h = 3}
 local stamregen = 0.5
 
-
-local function createdrawer(gamedata, id, name, mode)
+local function animedata(frames, time)
+  return {f = frames, t = time, ft = time / frames}
+end
+local function createdrawer(gamedata, id, name, mode, ox, oy)
   local act = gamedata.actor
+  ox = ox or 0
+  oy = oy or 0
+  oy = oy + 2
   return misc.createdrawer(
-    act.claimed[id].anime[name], mode, 0, 2
+    act.claimed[id].anime[name], mode, ox, oy
   )
 end
 local function fetchhitbox(gamedata, id, name)
@@ -48,6 +53,10 @@ local ims = {
   poke = impather("poke.png"),
   prepoke = impather("poke.png"),
   postpoke = impather("postpoke.png"),
+  upslash = impather("upslash.png"),
+  preupslash = impather("upslash_pre.png"),
+  postupslash = impather("upslash_post.png"),
+  dead = impather("dead.png"),
 }
 
 loaders.knight = function(gamedata)
@@ -56,123 +65,156 @@ loaders.knight = function(gamedata)
   end
 end
 
-local control = {}
-local idle = {}
-local follow = {}
-local prepoke = {}
-local poke = {}
-local postpoke = {}
-local attackb = {}
-local attackc = {}
-
-function idle.begin(gamedata, id)
-  return idle.run(gamedata, id)
-end
-
---[[
-function idle.run(gamedata, id)
-  local fid = fetchhitbox(gamedata, id, "follow")
-  local cols = coroutine.yield({fid})
-  local tofollow = cols[fid]
-  if #tofollow > 0 then
-    ai.sortclosest(gamedata, id, tofollow)
-    if tofollow[1] ~= id then
-      return follow.begin(tofollow[1], coroutine.yield())
-    end
-  end
-  return idle.run(coroutine.yield())
-end
---]]
-
 local function canattack(gamedata, id)
   local s = gamedata.actor.stamina[id]
   local u = gamedata.actor.usedstamina[id] or 0
   return s - u >= 1
 end
 
-function idle.run(gamedata, id, dco)
-  local fid = fetchhitbox(gamedata, id, "follow")
-  local hid = fetchhitbox(gamedata, id, "pokescan")
-  local sid = fetchhitbox(gamedata, id, "antistuck")
-  local cols = coroutine.yield({fid, hid, sid})
-  local act = gamedata.actor
-  local tohit = cols[hid]
-  if #tohit > 0 and canattack(gamedata, id) then
+local control = {}
+local idle = {}
+local follow = {}
+local prepoke = {}
+local poke = {}
+local postpoke = {}
+local upslash = {}
+local attackc = {}
+local dead = {}
+
+idle.pokebias = 0.75
+function idle.run(gamedata, id, co)
+  local fbid = fetchhitbox(gamedata, id, "follow")
+  local colres = coroutine.yield({fbid})
+  local tohit = colres[fbid]
+  if #tohit > 0 then
     ai.sortclosest(gamedata, id, tohit)
     gamedata, id = coroutine.yield()
-    return prepoke.run(gamedata, id, tohit[1])
+    local attacks = {poke, upslash}
+    local p = love.math.random()
+    local aid = p < idle.pokebias and 1 or 2
+    return attacks[aid].run(gamedata, id, tohit[1])
   end
-  local tofollow = cols[fid]
-  if #tofollow > 0 then
-    ai.sortclosest(gamedata, id, tofollow)
-    local follow = tofollow[1]
-    local minvx = -math.huge
-    local maxvx = math.huge
-    for _, oid in ipairs(cols[sid]) do
-      local dx = act.x[oid] - act.x[id]
-      if dx > 0 then maxvx = 0 elseif dx < 0 then minvx = 0 end
-    end
-    local dx = act.x[follow] - act.x[id]
-    dx = dx > 0 and 1 or -1
-    act.vx[id] = math.max(minvx, math.min(maxvx, dx * speed))
-    act.face[id] = dx
-  end
-  dco = dco or coroutine.create(defaultdrawer)
-  gamedata.actor.draw[id] = dco
+  co = co or coroutine.create(defaultdrawer)
+  gamedata.actor.draw[id] = co
+  gamedata.actor.vx[id] = 0
   gamedata, id = coroutine.yield()
-  return idle.run(gamedata, id, dco)
+  return idle.run(gamedata, id, co)
 end
 
-prepoke.time = 0.3
-function prepoke.run(gamedata, id, tid)
-  local act = gamedata.actor
-  act.draw[id] = createdrawer(gamedata, id, "prepoke", "once")
-  act.vx[id] = 0
-  local dx = act.x[tid] - act.x[id]
-  act.face[id] = dx / math.abs(dx)
-  local timer = misc.createtimer(gamedata, prepoke.time)
+
+poke.windup = animedata(1, 0.4)
+poke.attack = animedata(4, 0.4)
+poke.recover = animedata(1, 0.3)
+
+function poke.run(gamedata, id, tid)
+  gamedata.actor.draw[id] = coroutine.create(defaultdrawer)
+  local asid = fetchhitbox(gamedata, id, "antistuck")
+  local tol = 40
+  local reached = ai.moveto(gamedata, id, tid, speed, asid, tol)
+  gamedata.actor.vx[id] = 0
+  if not reached or not canattack(gamedata, id) then return idle.run(gamedata, id) end
+  local timer = misc.createtimer(gamedata, poke.windup.t)
+  gamedata.actor.draw[id] = createdrawer(gamedata, id, "prepoke", "once")
   while timer(gamedata) do
     coroutine.yield()
   end
-  return poke.run(gamedata, id)
-end
-
-poke.time = 0.4
-poke.frames = 4
-poke.ftime = poke.time / poke.frames
-function poke.run(gamedata, id)
+  timer = misc.createtimer(gamedata, poke.attack.t)
   gamedata.actor.draw[id] = createdrawer(gamedata, id, "poke", "once")
-  local timer = misc.createtimer(gamedata, poke.time)
+  local hid = fetchhitbox(gamedata, id, "poke")
+  local boxtimer = misc.createinterval(
+    gamedata, poke.attack.ft, poke.attack.ft * 2
+  )
+  local dmgfunc = combat.createoneshotdamage(id, 2)
+  while timer(gamedata) do
+    if boxtimer(gamedata) then
+      local cols = coroutine.yield({hid})
+      for _, otherid in ipairs(cols[hid]) do
+        dmgfunc(gamedata, otherid)
+      end
+    end
+    coroutine.yield()
+  end
   gamedata.actor.usedstamina[id] = (gamedata.actor.usedstamina[id] or 0) + 1
-  while timer(gamedata) do
-    coroutine.yield()
-  end
-  return postpoke.run(gamedata, id)
-end
-
-postpoke.time = 0.2
-postpoke.frames = 1
-postpoke.ftime = postpoke.time / postpoke.frames
-function postpoke.run(gamedata, id)
+  timer = misc.createtimer(gamedata, poke.recover.t)
   gamedata.actor.draw[id] = createdrawer(gamedata, id, "postpoke", "once")
-  local timer = misc.createtimer(gamedata, postpoke.time)
   while timer(gamedata) do
     coroutine.yield()
   end
-  return idle.begin(gamedata, id)
+  return upslash.run(gamedata, id, tid)
 end
 
-function control.begin(gamedata, id)
-  local co = coroutine.create(idle.begin)
-  return control.run(co, gamedata, id)
+upslash.windup = animedata(1, 0.4)
+upslash.attack = animedata(5, 0.3)
+upslash.recover = animedata(1, 0.3)
+function upslash.run(gamedata, id, tid)
+  gamedata.actor.draw[id] = coroutine.create(defaultdrawer)
+  local asid = fetchhitbox(gamedata, id, "antistuck")
+  local tol = 40
+  local reached = ai.moveto(gamedata, id, tid, speed, asid, tol)
+  gamedata.actor.vx[id] = 0
+  if not reached or not canattack(gamedata, id) then return idle.run(gamedata, id) end
+  -- Windup state
+  local timer = misc.createtimer(gamedata, upslash.windup.t)
+  gamedata.actor.draw[id] = createdrawer(
+    gamedata, id, "preupslash", "once", 0, 24
+  )
+  while timer(gamedata) do
+    coroutine.yield()
+  end
+  timer = misc.createtimer(gamedata, upslash.attack.t)
+  gamedata.actor.draw[id] = createdrawer(
+    gamedata, id, "upslash", "once", 0, 24
+  )
+  --[[
+  local hid = fetchhitbox(gamedata, id, "poke")
+  local boxtimer = misc.createinterval(
+    gamedata, poke.attack.ft, poke.attack.ft * 2
+  )
+  ]]--
+  local dmgfunc = combat.createoneshotdamage(id, 2)
+  local hid2 = fetchhitbox(gamedata, id, "upslash_f2")
+  local hid3 = fetchhitbox(gamedata, id, "upslash_f3")
+  local timerf2 = misc.createinterval(
+    gamedata, upslash.attack.ft, upslash.attack.ft
+  )
+  local timerf3 = misc.createinterval(
+    gamedata, upslash.attack.ft * 2, upslash.attack.ft
+  )
+  while timer(gamedata) do
+    local hid
+    if timerf2(gamedata) then
+      hid = hid2
+    elseif timerf3(gamedata) then
+      hid = hid3
+    end
+    if hid then
+      local cols = coroutine.yield({hid})
+      for _, otherid in ipairs(cols[hid]) do
+        dmgfunc(gamedata, otherid)
+      end
+    end
+    coroutine.yield()
+  end
+  gamedata.actor.usedstamina[id] = (gamedata.actor.usedstamina[id] or 0) + 1
+  timer = misc.createtimer(gamedata, upslash.recover.t)
+  gamedata.actor.draw[id] = createdrawer(
+    gamedata, id, "postupslash", "once", 0, 24
+  )
+  while timer(gamedata) do
+    coroutine.yield()
+  end
+  return idle.run(gamedata, id)
 end
 
-function control.run(co, gamedata, id)
-  local _, colreq = coroutine.resume(co, gamedata, id)
-  colreq = colreq or {}
-  local do_resume = #colreq > 0
-  table.insert(colreq, fetchhitbox(gamedata, id, "body"))
-  local colres = coroutine.yield(colreq)
+function dead.run(gamedata, id)
+  gamedata.actor.draw[id] = createdrawer(gamedata, id, "dead", "once", 0, -1)
+  gamedata.actor.vx[id] = 0
+  while true do
+    coroutine.yield()
+  end
+end
+
+function control.update(gamedata, id, colreq)
   local ustam = gamedata.actor.usedstamina[id] or 0
   ustam = ustam - stamregen * gamedata.system.dt
   if ustam < 0 then
@@ -180,7 +222,26 @@ function control.run(co, gamedata, id)
   else
     gamedata.actor.usedstamina[id] = ustam
   end
-  if do_resume then coroutine.resume(co, colres) end
+  colreq = colreq or {}
+  table.insert(colreq, fetchhitbox(gamedata, id, "body"))
+  return coroutine.yield(colreq)
+end
+
+function control.begin(gamedata, id)
+  local co = coroutine.create(idle.run)
+  return control.run(co, gamedata, id)
+end
+
+function control.run(co, gamedata, id)
+  local actor = gamedata.actor
+  local hp = actor.health[id]
+  local dmg = actor.damage[id] or 0
+  if hp <= dmg then return dead.run(gamedata, id) end
+  local status, colreq = coroutine.resume(co, gamedata, id)
+  colreq = colreq or {}
+  local do_resume = #colreq > 0
+  local colres = control.update(gamedata, id, colreq)
+  if do_resume then status = coroutine.resume(co, colres) end
   return control.run(co, coroutine.yield())
 end
 
@@ -191,11 +252,28 @@ function actor.knight(gamedata, id, x, y)
       walk = initanimation(gamedata, resim[ims.walk], 48, 48, 0.2, 4),
       idle = initanimation(gamedata, resim[ims.idle], 48, 48, 0.2, 3),
       poke = initanimation(
-        gamedata, resim[ims.poke], 96, 48, poke.ftime, poke.frames
+        gamedata, resim[ims.poke], 96, 48, poke.attack.ft, poke.attack.f
       ),
-      prepoke = initanimation(gamedata, resim[ims.prepoke], 96, 48, 0.2, 1),
+      prepoke = initanimation(
+        gamedata, resim[ims.prepoke], 96, 48, poke.windup.ft, poke.windup.f
+      ),
       postpoke = initanimation(
-        gamedata, resim[ims.postpoke], 96, 48, postpoke.ftime, postpoke.frames
+        gamedata, resim[ims.postpoke], 96, 48, poke.recover.ft, poke.recover.f
+      ),
+      upslash = initanimation(
+        gamedata, resim[ims.upslash], 96, 96, upslash.attack.ft,
+        upslash.attack.f
+      ),
+      preupslash = initanimation(
+        gamedata, resim[ims.preupslash], 96, 96, upslash.windup.ft,
+        upslash.windup.f
+      ),
+      postupslash = initanimation(
+        gamedata, resim[ims.postupslash], 96, 96, upslash.recover.ft,
+        upslash.recover.f
+      ),
+      dead = initanimation(
+        gamedata, resim[ims.dead], 96, 48, 0.5, 4
       ),
     },
     hitbox = {
@@ -203,16 +281,24 @@ function actor.knight(gamedata, id, x, y)
         gamedata.hitbox, coolision.createaxisbox, -pfollow.w, -pfollow.h,
         pfollow.w * 2, pfollow.h * 2, nil, gamedata.hitboxtypes.allybody
       ),
-      pokescan = initresource(
-        gamedata.hitbox, coolision.createaxisbox, -phit.w, -phit.h,
-        phit.w * 2, phit.h * 2, nil, gamedata.hitboxtypes.allybody
+      poke = initresource(
+        gamedata.hitbox, coolision.createaxisbox, -14, 3,
+        phit.w, phit.h , nil, gamedata.hitboxtypes.allybody
+      ),
+      upslash_f2 = initresource(
+        gamedata.hitbox, coolision.createaxisbox, 16, -10,
+        20, 31, nil, gamedata.hitboxtypes.allybody
+      ),
+      upslash_f3 = initresource(
+        gamedata.hitbox, coolision.createaxisbox, -16, 17,
+        45, 19, nil, gamedata.hitboxtypes.allybody
       ),
       body = initresource(
         gamedata.hitbox, coolision.createaxisbox, -w, -h, w * 2, h * 2,
         gamedata.hitboxtypes.enemybody
       ),
       antistuck = initresource(
-        gamedata.hitbox, coolision.createaxisbox, -20, -h, 40, h * 2,
+        gamedata.hitbox, coolision.createaxisbox, -15, -h, 30, h * 2,
         nil, {gamedata.hitboxtypes.enemybody, gamedata.hitboxtypes.allybody}
       ),
     }
@@ -227,8 +313,8 @@ function actor.knight(gamedata, id, x, y)
   act.vy[id] = 0
   act.face[id] = 1
 
-  act.health[id] = 20
-  act.stamina[id] = 1
+  act.health[id] = 2
+  act.stamina[id] = 2
 
   act.control[id] = coroutine.create(control.begin)
 end
