@@ -34,7 +34,6 @@ misc.createdrawer = function(animeid, mode, ox, oy)
     anime:update(gamedata.system.dt)
     return draw(coroutine.yield())
   end
-
   return coroutine.create(begin)
 end
 misc.createtimer = function(gamedata, duration)

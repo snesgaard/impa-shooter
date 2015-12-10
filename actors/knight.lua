@@ -57,6 +57,7 @@ local ims = {
   preupslash = impather("upslash_pre.png"),
   postupslash = impather("upslash_post.png"),
   dead = impather("dead.png"),
+  evadeslash = impather("evadeslash.png"),
 }
 
 loaders.knight = function(gamedata)
@@ -78,7 +79,7 @@ local prepoke = {}
 local poke = {}
 local postpoke = {}
 local upslash = {}
-local attackc = {}
+local evadeslash = {}
 local dead = {}
 
 idle.pokebias = 0.75
@@ -206,6 +207,31 @@ function upslash.run(gamedata, id, tid)
   return idle.run(gamedata, id)
 end
 
+evadeslash.backdist = 40
+evadeslash.backtime = 0.4
+evadeslash.windup = 0.2
+evadeslash.fwddist = 40
+evadeslash.fwdtime = 0.4
+function evadeslash.run(gamedata, id)
+  local act = gamedata.actor
+  local evds = evadeslash
+  act.draw[id] = createdrawer(
+    gamedata, id, "evadeslash", "loop", 0, 24
+  )
+  local f = act.face[id]
+  act.vx[id] = -f * evds.backdist / evds.backtime
+  local timer = misc.createtimer(gamedata, evadeslash.backtime)
+  while timer(gamedata) do
+    coroutine.yield()
+  end
+  act.vx[id] = f * evds.fwddist / evds.fwdtime
+  timer = misc.createtimer(gamedata, evadeslash.fwdtime)
+  while timer(gamedata) do
+    coroutine.yield()
+  end
+  return evadeslash.run(gamedata, id)
+end
+
 function dead.run(gamedata, id)
   gamedata.actor.draw[id] = createdrawer(gamedata, id, "dead", "once", 0, -1)
   gamedata.actor.vx[id] = 0
@@ -228,7 +254,8 @@ function control.update(gamedata, id, colreq)
 end
 
 function control.begin(gamedata, id)
-  local co = coroutine.create(idle.run)
+  --local co = coroutine.create(idle.run)
+  local co = coroutine.create(evadeslash.run)
   return control.run(co, gamedata, id)
 end
 
@@ -272,6 +299,9 @@ function actor.knight(gamedata, id, x, y)
         gamedata, resim[ims.postupslash], 96, 96, upslash.recover.ft,
         upslash.recover.f
       ),
+      evadeslash = initanimation(
+        gamedata, resim[ims.evadeslash], 96, 96, 0.1, 7 -- Insert proper defines
+      ),
       dead = initanimation(
         gamedata, resim[ims.dead], 96, 48, 0.5, 4
       ),
@@ -313,7 +343,7 @@ function actor.knight(gamedata, id, x, y)
   act.vy[id] = 0
   act.face[id] = 1
 
-  act.health[id] = 2
+  act.health[id] = 20
   act.stamina[id] = 2
 
   act.control[id] = coroutine.create(control.begin)
