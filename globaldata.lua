@@ -92,7 +92,9 @@ gamedata = {
     y = {},
     system = {},
   }),
-  animations = createresource({}),
+  animations = createresource({
+    quads = {},
+  }),
   light = {
     point = createresource({
       x = {},
