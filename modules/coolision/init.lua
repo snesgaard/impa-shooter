@@ -224,6 +224,17 @@ coolision.docollisiondetections = function(gamedata, colrequests)
   end
   return allcols
 end
+function coolision.fetchres(colres, id, boxids)
+  local res = {}
+  local rid = colres[id] or {}
+  for _, bid in pairs(boxids) do
+    local r = rid[bid] or {}
+    for _, otherid in ipairs(r) do
+      table.insert(res, otherid)
+    end
+  end
+  return res
+end
 
 coolision.newAxisBox = function(id, x, y, w, h, hail, seek, callback)
   local box = {}
@@ -251,6 +262,10 @@ coolision.createaxisbox = function(hitbox, id, x, y, w, h, hail, seek)
   if type(seek) ~= "table" then seek = {seek} end
   hitbox.hail[id] = hail
   hitbox.seek[id] = seek
+end
+
+coolision.createcenterbox = function(hitbox, id, w, h, hail, seek)
+  coolision.createaxisbox(hitbox, id, -w * 0.5, -h * 0.5, w, h, hail, seek)
 end
 
 coolision.setcallback = function(box, callback)

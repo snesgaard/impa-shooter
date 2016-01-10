@@ -5,6 +5,7 @@ local bsize = 3
 local ssize = 2
 
 local active = {}
+local todraw = {}
 
 healthdisplay = {}
 
@@ -21,26 +22,42 @@ function healthdisplay.clear()
 end
 
 function healthdisplay.update(gamedata)
+  todraw = {}
   local ct = gamedata.system.time
+  local act = gamedata.actor
   for id, t in pairs(active) do
-    if ct - t > duration then active[id] = nil end
+    if ct - t > duration then
+      active[id] = nil
+    else
+      local hp = act.health[id] - (act.damage[id] or 0)
+      local srender = math.max(0, math.floor((hp - 1) / maxbig))
+      local brender = math.max(0, hp - srender * maxbig)
+      table.insert(todraw, {
+        x = act.x[id], y = act.y[id], h = math.floor(act.height[id] * 1.4),
+        srender = srender, brender = brender
+      })
+    end
   end
 end
 
 function healthdisplay.draw(gamedata)
   local act = gamedata.actor
-  for id, _ in pairs(active) do
+  local draw = function(x, y, w, h)
+    gfx.rectangle(
+      "fill", math.floor(x), math.floor(y), math.floor(w), math.floor(h)
+    )
+  end
+  for _, v in pairs(todraw) do
     gfx.setColor(138, 7, 7)
-    local x = math.floor(act.x[id])
-    local y = math.floor(act.y[id])
-    local h = math.floor(act.height[id] * 1.4)
-    local hp = act.health[id] - (act.damage[id] or 0)
-    local srender = math.max(0, math.floor((hp - 1) / maxbig))
-    local brender = math.max(0, hp - srender * maxbig)
+    local x = v.x
+    local y = v.y
+    local h = v.h
+    local srender = v.srender
+    local brender = v.brender
     for dx = 1, brender do
       local sx = (bsize + 2)
       local tx = x + dx * sx - sx * (maxbig + 1) * 0.5
-      gfx.rectangle("fill", tx, y + h, bsize, bsize)
+      draw(tx, y + h, bsize, bsize)
     end
     local remaining = srender > 0 and maxbig - brender or 0
     --gfx.setColor(25, 15, 100)
@@ -48,7 +65,7 @@ function healthdisplay.draw(gamedata)
     for dx = 1, remaining do
       local sx = (bsize + 2)
       local tx = x + (dx + brender) * sx - sx * (maxbig + 1) * 0.5
-      gfx.rectangle("fill", tx, y + h, bsize, bsize)
+      draw(tx, y + h, bsize, bsize)
     end
     gfx.setColor(100, 0, 50)
     local sy = y + h + bsize + 2
@@ -58,7 +75,7 @@ function healthdisplay.draw(gamedata)
       for dx = 1, count do
         local sx = (ssize + 1)
         local tx = x + dx * sx - sx * (maxsmall + 1) * 0.5 + 1
-        gfx.rectangle("fill", tx, sy, ssize, ssize)
+        draw(tx, sy, ssize, ssize)
       end
       srender = srender - maxsmall
       sy = sy + dy

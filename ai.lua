@@ -28,9 +28,20 @@ function ai.moveto(gamedata, fid, tid, speed, asid, tol)
   dx = act.x[tid] - act.x[fid]
   local f = dx / math.abs(dx)
   act.face[fid] = f
-  if math.abs(dx) < tol then return true end
+  if math.abs(dx) < tol then
+    return true
+  end
+  local do_col = function(gamedata, id)
+    return {asid}
+  end
+  local do_res = function(gamedata, id, res)
+    act.vx[fid] = setspeed(gamedata, fid, speed * f, res[asid] or {})
+  end
+  do_action(gamedata, fid, do_col, do_res)
+  --[[
   cols = coroutine.yield({asid})
   act.vx[fid] = setspeed(gamedata, fid, speed * f, cols[asid])
+  ]]--
   coroutine.yield()
   return ai.moveto(gamedata, fid, tid, speed, asid, tol)
 end

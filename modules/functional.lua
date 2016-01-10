@@ -140,6 +140,12 @@ functional.fmap = function(m, t)
   return o
 end
 
+functional.do_until = function(ft, ...)
+  for _, f in pairs(ft) do
+    local r = f(...)
+    if r then return r end
+  end
+end
 -- This refers to a function that takes a list of functions that all takes the
 -- same number and types of arguments. It produces a function which then takes
 -- said argument and produces an output list by applying a function in said list

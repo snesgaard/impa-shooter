@@ -3,103 +3,71 @@ require "math"
 -- Table which will contain values related to the combat engine
 combat = {}
 
-combat.createoneshotdamage = function(fid, dmg)
+combat.createoneshotdamage = function(boxids, dmg)
   local cache = {}
-  local f = function(gamedata, tid)
-    if cache[tid] then return end
-    cache[tid] = true
-    return combat.damage(gamedata, fid, tid, dmg)
+  local f = function(gamedata, id, colres)
+    local res = coolision.fetchres(colres, id, boxids)
+    if #res == 0 then return end
+    local req = {}
+    for k, v in pairs(res) do
+      if not cache[k] then
+        req[k] = combat.request(v, dmg)
+        cache[k] = true
+      end
+    end
+    return req
   end
   return f
-end
-
--- Damange is calcuated based on defensive values
-combat.calculatedamage = function(damage, soak, reduce, invicibility)
-  if invicibility and invicibility > 0 then return 0 end
-
-  local d = damage
-  local s = soak
-  local r = reduce
-  return math.floor(math.max(0, (d - s)) * r)
- end
-
--- General update routine for combat related events
-combat.setstat = function(current, max)
-  return math.min(max, current)
-end
-
-combat.singledamagecall = function(dmgfunc)
-  local cache = {}
-  local checkcache = function(this, other)
-    if not cache[other] then return this, other end
-  end
-  local insertcache = function(this, other)
-    cache[other] = love.timer.getTime()
-    return this, other
-  end
-  return functional.monadcompose(checkcache, dmgfunc, insertcache)
-end
-
-combat.activeboxsequence = function(
-  gamedata, id, boxid, dmg, x, y, w, h, pretime, attime, posttime
-)
-  -- Create timers
-  local pretimer = misc.createtimer(gamedata.system.time, pretime)
-  local hittimer = misc.createtimer(gamedata.system.time, attime)
-  local posttimer = misc.createtimer(gamedata.system.time, posttime)
-  while pretimer(gamedata.system.time) do coroutine.yield() end
-  -- Register hitbox
-  local dmgfunc = combat.singledamagecall(
-    function(this, other)
-      if other.applydamage then
-        local x = this.x + this.w * 0.5
-        local y = this.y - this.h * 0.5
-        other.applydamage(this.id, x, y, dmg)
-      end
-      return this, other
-    end
-  )
-  gamedata.hitbox[id][boxid] = coolision.newAxisBox(
-    id, 0, 0, w, h, gamedata.hitboxtypes.allyactive,
-    gamedata.hitboxtypes.enemybody, dmgfunc
-  )
-  gamedata.hitboxsync[id][boxid] = {
-    x = x, y = y
-  }
-  while hittimer(gamedata.system.time) do coroutine.yield() end
-  -- Clean hitbox
-  gamedata.hitbox[id][boxid] = nil
-  gamedata.hitboxsync[id][boxid] = nil
-  while posttimer(gamedata.system.time) do coroutine.yield() end
-end
-
-function combat.dodamage(gamedata, id, dmg, soak, reduce, invicibility)
-  soak = soak or gamedata.soak[id]
-  reduce = reduce or gamedata.reduce[id]
-  invicibility = invicibility or gamedata.invincibility[id]
-  local d = combat.calculatedamage(dmg, soak, reduce, invicibility)
-  local e = gamedata.entity[id]
-  gamedata.init(gamedata, actor.damagenumber, e.x, e.y + 20, d, 0.5)
-  gamedata.damage[id] = (gamedata.damage[id] or 0) + d
-  return d
 end
 
 local function _do_nothing(_, _, _, dmg)
   return dmg
 end
 
-function combat.damage(gamedata, fid, tid, dmg)
+function combat.damage(gamedata, tid, dmg)
   local act = gamedata.actor
   local s = act.soak[tid] or 0
   local r = act.reduce[tid] or 1
   local i = act.invincibility[tid] or 0
   if i > 0 then return 0 end
   local predmg = math.max(0, r * (dmg - s))
-  local f = act.ondamagetaken[tid] or _do_nothing
-  local postdmg = f(gamedata, tid, fid, predmg) or predmg
-  act.damage[tid] = (act.damage[tid] or 0) + postdmg
-  if healthdisplay then healthdisplay.add(gamedata, tid) end
-  return postdmg
+  return predmg
+end
+
+function combat.hitboxseq(gamedata, boxids, frames, time, dolerp)
+  local t = gamedata.system.time
+  local ft = time / frames
+  local f = function(gamedata, id)
+    local dt = gamedata.system.time - t
+    local frame = math.ceil(dt / time * frames)
+    frame = math.max(1, frame)
+    local box = boxids[frame]
+    return {box}
+  end
+  return f
+end
+
+function combat.dorequests(gamedata, requests)
+  local res = {}
+  for id, reqs in pairs(requests) do
+    for _, r in pairs(reqs) do
+      local to = r.to
+      local d = r.dmg
+      local dmg = combat.damage(gamedata, to, d)
+      local subres = res[to] or {}
+      table.insert(subres, combat.result(id, dmg))
+      res[to] = subres
+    end
+  end
+  return res
+end
+
+function combat.request(toid, damage)
+  return {to = toid, dmg = damage}
+end
+
+function combat.result(fromid, damage)
+  return {from = fromid, dmg = damage}
 end
 
 return combat

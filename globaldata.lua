@@ -1,21 +1,28 @@
+local seed = {}
+local available_id = {}
 local function createresource(resource)
-  resource.__seed__ = 1
-  resource.__available_id__ = {}
+  --resource.__seed__ = 1
+  --resource.__available_id__ = {}
+  seed[resource] = 1
+  available_id[resource] = {}
   return resource
 end
 function allocresource(resource)
-  local available_id = resource.__available_id__
+  local available_id = available_id[resource]
   local id = available_id[#available_id]
   if id then
     available_id[#available_id] = nil
     return id
   end
-  local s = resource.__seed__
-  resource.__seed__ = resource.__seed__ + 1
+  local s = seed[resource]
+  seed[resource] = s + 1
   return s
 end
 function freeresource(resource, id)
-  table.insert(resource.__available_id__, id)
+  table.insert(available_id[resource], id)
+  for _, v in pairs(resource) do
+    v[id] = nil
+  end
 end
 
 gamedata = {
@@ -29,6 +36,7 @@ gamedata = {
   global = {
     playerid,
     level,
+    control = {},
   },
   visual = {
     scale = 1,
@@ -38,15 +46,17 @@ gamedata = {
     width = 0,
     height = 0,
     aspect = 0,
+    x = 0,
+    y = 0, --camera in world space
   },
   resource = {
     images = {},
     mesh = {},
     shaders = {},
     tilemaps = {},
+    atlas = {},
   },
   actor = createresource({
-    claimed = {},
     -- Geometric infomation
     x = {},
     y = {},
@@ -74,7 +84,7 @@ gamedata = {
     ground = {},
     -- Input
     latch = {},
-    control = {},
+    action = {},
     draw = {},
     drawtype = {},
   }),
@@ -92,8 +102,17 @@ gamedata = {
     y = {},
     system = {},
   }),
+  trail = createresource({
+    time = {},
+    draw = {},
+  }),
   animations = createresource({
     quads = {},
+    width = {},
+    height = {},
+    -- Origin
+    x = {},
+    y = {},
   }),
   light = {
     point = createresource({
@@ -124,15 +143,7 @@ gamedata = {
     x = {},
     y = {},
     draw = {},
-  }),
-  mobolee = {
-    -- Horde mode data
-    master = -1,
-    mobolees = {},
-    activemobolee = 0,
-    score = 0,
-    timeleft = 0,
-  }
+  })
 }
 
 function initactor(gamedata, f, ...)
@@ -161,6 +172,8 @@ local draworder = {
   "bullet",
   "evadetrail",
   "player",
+  "knight",
+  "shalltear",
 }
 
 for ord, ent in pairs(draworder) do

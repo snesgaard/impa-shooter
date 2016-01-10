@@ -25,8 +25,11 @@ args = parser.parse_args()
 
 ims = []
 
+theorymin = 0
 for path in args.path:
-    ims.append(cv2.imread(path, -1))
+    im = cv2.imread(path, -1)
+    ims.append(im)
+    theorymin = theorymin + im.shape[0] * im.shape[1]
 
 imcount = len(ims)
 
@@ -76,7 +79,6 @@ for r in xrange(0, imcount + 1):
 
 tc = C.shape[1] - 1
 tr = np.argmin(C[:, -1])
-"""
 print "cost"
 print C[:, -1]
 print "trace"
@@ -85,7 +87,8 @@ print "final dim"
 print D[tr, tc]
 print "final cost"
 print C[tr, tc]
-"""
+print "theoretical min cost"
+print theorymin
 fim = np.zeros((D[tr, tc, 0], D[tr, tc, 1], 4), dtype = "uint8")
 splits = [imcount]
 while tc > 1:

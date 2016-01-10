@@ -1,350 +1,358 @@
-local fun = require "modules/functional"
 require "ai"
 
-actor = actor or {}
 loaders = loaders or {}
+knight = knight or {}
 
-local w = 5
-local h = 22
-local speed = 80
-local pfollow = {w = 600, h = 5}
-local phit = {w = 52, h = 3}
-local stamregen = 0.5
+local entities = {}
 
-local function animedata(frames, time)
-  return {f = frames, t = time, ft = time / frames}
-end
-local function createdrawer(gamedata, id, name, mode, ox, oy)
-  local act = gamedata.actor
-  ox = ox or 0
-  oy = oy or 0
-  oy = oy + 2
-  return misc.createdrawer(
-    act.claimed[id].anime[name], mode, ox, oy
-  )
-end
-local function fetchhitbox(gamedata, id, name)
-  local act = gamedata.actor
-  return act.claimed[id].hitbox[name]
-end
-local function defaultdrawer(gamedata, id)
-  local idledrawer = createdrawer(gamedata, id, "idle", "bounce")
-  local walkdrawer = createdrawer(gamedata, id, "walk")
-  local act = gamedata.actor
-  while true do
-    local vx = act.vx[id]
-    if math.abs(vx) > 1 then
-      coroutine.resume(walkdrawer, gamedata, id)
-    else
-      coroutine.resume(idledrawer, gamedata, id)
-    end
-    coroutine.yield()
-  end
-end
+local anime = {}
+local hitbox = {}
 
-local imroot = "res/knight"
-local function impather(name)
-  return imroot .. "/" .. name
-end
+local width = 5
+local height = 22
+local speed = 50
 
-local ims = {
-  idle = impather("idle.png"),
-  walk = impather("walk.png"),
-  poke = impather("poke.png"),
-  prepoke = impather("poke.png"),
-  postpoke = impather("postpoke.png"),
-  upslash = impather("upslash.png"),
-  preupslash = impather("upslash_pre.png"),
-  postupslash = impather("upslash_post.png"),
-  dead = impather("dead.png"),
-  evadeslash = impather("evadeslash.png"),
+local poke = {
+  wtime = 0.3,
+  atime = 0.4,
+  rtime = 0.4
+}
+local upslash = {
+  wtime = 0.5,
+  atime = 0.2,
+  rtime = 0.4,
+}
+local evdslash = {
+  dist = 40,
+  etime = 0.3,
+  wtime = 0.5,
+  atime = 0.3,
+  rtime = 0.3,
 }
 
-loaders.knight = function(gamedata)
-  for _, path in pairs(ims) do
-    gamedata.resource.images[path] = gamedata.resource.images[path] or loadspriteimage(path)
-  end
-end
-
-local function canattack(gamedata, id)
-  local s = gamedata.actor.stamina[id]
-  local u = gamedata.actor.usedstamina[id] or 0
-  return s - u >= 1
-end
-
+-- Define actions
+local action = {}
 local control = {}
-local idle = {}
-local follow = {}
-local prepoke = {}
-local poke = {}
-local postpoke = {}
-local upslash = {}
-local evadeslash = {}
-local dead = {}
+local ai = {}
 
-idle.pokebias = 0.75
-function idle.run(gamedata, id, co)
-  local fbid = fetchhitbox(gamedata, id, "follow")
-  local colres = coroutine.yield({fbid})
-  local tohit = colres[fbid]
-  if #tohit > 0 then
-    ai.sortclosest(gamedata, id, tohit)
-    gamedata, id = coroutine.yield()
-    local attacks = {poke, upslash}
-    local p = love.math.random()
-    local aid = p < idle.pokebias and 1 or 2
-    return attacks[aid].run(gamedata, id, tohit[1])
-  end
-  co = co or coroutine.create(defaultdrawer)
-  gamedata.actor.draw[id] = co
-  gamedata.actor.vx[id] = 0
-  gamedata, id = coroutine.yield()
-  return idle.run(gamedata, id, co)
-end
-
-
-poke.windup = animedata(1, 0.4)
-poke.attack = animedata(4, 0.4)
-poke.recover = animedata(1, 0.3)
-
-function poke.run(gamedata, id, tid)
-  gamedata.actor.draw[id] = coroutine.create(defaultdrawer)
-  local asid = fetchhitbox(gamedata, id, "antistuck")
-  local tol = 40
-  local reached = ai.moveto(gamedata, id, tid, speed, asid, tol)
-  gamedata.actor.vx[id] = 0
-  if not reached or not canattack(gamedata, id) then return idle.run(gamedata, id) end
-  local timer = misc.createtimer(gamedata, poke.windup.t)
-  gamedata.actor.draw[id] = createdrawer(gamedata, id, "prepoke", "once")
-  while timer(gamedata) do
-    coroutine.yield()
-  end
-  timer = misc.createtimer(gamedata, poke.attack.t)
-  gamedata.actor.draw[id] = createdrawer(gamedata, id, "poke", "once")
-  local hid = fetchhitbox(gamedata, id, "poke")
-  local boxtimer = misc.createinterval(
-    gamedata, poke.attack.ft, poke.attack.ft * 2
-  )
-  local dmgfunc = combat.createoneshotdamage(id, 2)
-  while timer(gamedata) do
-    if boxtimer(gamedata) then
-      local cols = coroutine.yield({hid})
-      for _, otherid in ipairs(cols[hid]) do
-        dmgfunc(gamedata, otherid)
-      end
-    end
-    coroutine.yield()
-  end
-  gamedata.actor.usedstamina[id] = (gamedata.actor.usedstamina[id] or 0) + 1
-  timer = misc.createtimer(gamedata, poke.recover.t)
-  gamedata.actor.draw[id] = createdrawer(gamedata, id, "postpoke", "once")
-  while timer(gamedata) do
-    coroutine.yield()
-  end
-  return upslash.run(gamedata, id, tid)
-end
-
-upslash.windup = animedata(1, 0.4)
-upslash.attack = animedata(5, 0.3)
-upslash.recover = animedata(1, 0.3)
-function upslash.run(gamedata, id, tid)
-  gamedata.actor.draw[id] = coroutine.create(defaultdrawer)
-  local asid = fetchhitbox(gamedata, id, "antistuck")
-  local tol = 40
-  local reached = ai.moveto(gamedata, id, tid, speed, asid, tol)
-  gamedata.actor.vx[id] = 0
-  if not reached or not canattack(gamedata, id) then return idle.run(gamedata, id) end
-  -- Windup state
-  local timer = misc.createtimer(gamedata, upslash.windup.t)
-  gamedata.actor.draw[id] = createdrawer(
-    gamedata, id, "preupslash", "once", 0, 24
-  )
-  while timer(gamedata) do
-    coroutine.yield()
-  end
-  timer = misc.createtimer(gamedata, upslash.attack.t)
-  gamedata.actor.draw[id] = createdrawer(
-    gamedata, id, "upslash", "once", 0, 24
-  )
-  --[[
-  local hid = fetchhitbox(gamedata, id, "poke")
-  local boxtimer = misc.createinterval(
-    gamedata, poke.attack.ft, poke.attack.ft * 2
-  )
-  ]]--
-  local dmgfunc = combat.createoneshotdamage(id, 2)
-  local hid2 = fetchhitbox(gamedata, id, "upslash_f2")
-  local hid3 = fetchhitbox(gamedata, id, "upslash_f3")
-  local timerf2 = misc.createinterval(
-    gamedata, upslash.attack.ft, upslash.attack.ft
-  )
-  local timerf3 = misc.createinterval(
-    gamedata, upslash.attack.ft * 2, upslash.attack.ft
-  )
-  while timer(gamedata) do
-    local hid
-    if timerf2(gamedata) then
-      hid = hid2
-    elseif timerf3(gamedata) then
-      hid = hid3
-    end
-    if hid then
-      local cols = coroutine.yield({hid})
-      for _, otherid in ipairs(cols[hid]) do
-        dmgfunc(gamedata, otherid)
-      end
-    end
-    coroutine.yield()
-  end
-  gamedata.actor.usedstamina[id] = (gamedata.actor.usedstamina[id] or 0) + 1
-  timer = misc.createtimer(gamedata, upslash.recover.t)
-  gamedata.actor.draw[id] = createdrawer(
-    gamedata, id, "postupslash", "once", 0, 24
-  )
-  while timer(gamedata) do
-    coroutine.yield()
-  end
-  return idle.run(gamedata, id)
-end
-
-evadeslash.backdist = 40
-evadeslash.backtime = 0.4
-evadeslash.windup = 0.2
-evadeslash.fwddist = 40
-evadeslash.fwdtime = 0.4
-function evadeslash.run(gamedata, id)
+function action.poke(gamedata, id, other)
   local act = gamedata.actor
-  local evds = evadeslash
-  act.draw[id] = createdrawer(
-    gamedata, id, "evadeslash", "loop", 0, 24
+  local timer
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.walk, 0.2 * 4 / 1.5, "repeat"
   )
+  ai.moveto(gamedata, id, other, speed * 1.5, hitbox.antistuck, 35)
+  act.vx[id] = 0
+  -- Windup
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.poke, poke.wtime, "once", 1, 1
+  )
+  timer = misc.createtimer(gamedata, poke.wtime)
+  while timer(gamedata) do
+    do_action()
+    coroutine.yield()
+  end
+  -- Attack
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.poke, poke.atime, "once"
+  )
+  timer = misc.createtimer(gamedata, poke.atime)
+  local seq = combat.hitboxseq(gamedata, hitbox.poke, 4, poke.atime)
+  local dmg = combat.createoneshotdamage(hitbox.poke, 1)
+  while timer(gamedata) do
+    do_action(gamedata, id, seq, dmg)
+    coroutine.yield()
+  end
+  -- Recover
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.poke, poke.rtime, "once", 4, 4
+  )
+  timer = misc.createtimer(gamedata, poke.rtime)
+  while timer(gamedata) do
+    do_action()
+    coroutine.yield()
+  end
+  -- Stub
+  do_action()
+end
+
+function action.upslash(gamedata, id, other)
+  local act = gamedata.actor
+  local timer
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.walk, 0.2 * 4, "repeat"
+  )
+  ai.moveto(gamedata, id, other, speed, hitbox.antistuck, 35)
+  act.vx[id] = 0
+  -- Windup
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.upslash, upslash.wtime, "once", 1, 1
+  )
+  timer = misc.createtimer(gamedata, upslash.wtime)
+  while timer(gamedata) do
+    do_action()
+    coroutine.yield()
+  end
+  -- Attack
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.upslash, upslash.atime, "once"
+  )
+  timer = misc.createtimer(gamedata, upslash.atime)
+  local seq = combat.hitboxseq(
+    gamedata, hitbox.upslash, 5, upslash.atime
+  )
+  local dmg = combat.createoneshotdamage(hitbox.upslash, 1)
+  while timer(gamedata) do
+    do_action(gamedata, id, seq, dmg)
+    coroutine.yield()
+  end
+  -- Recover
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.upslash, upslash.rtime, "once", 5, 5
+  )
+  timer = misc.createtimer(gamedata, upslash.rtime)
+  while timer(gamedata) do
+    do_action()
+    coroutine.yield()
+  end
+  -- Stub
+  do_action()
+end
+
+function action.evadeslash(gd, id)
+  local cs = trail.chain(
+    trail.color(
+      gamedata, "knight", {50, 200, 200, 100}, {0, 50, 150, 0}
+    ),
+    trail.scale(1, 1.5)
+  )
+  local createdraw = function(time, from, to)
+    return trail.drawer(
+      gamedata, 0, evdslash.etime * 0.5, "knight", anime.evadeslash,
+      time, cs, "once", from, to
+    )
+  end
+  local act = gamedata.actor
   local f = act.face[id]
-  act.vx[id] = -f * evds.backdist / evds.backtime
-  local timer = misc.createtimer(gamedata, evadeslash.backtime)
-  while timer(gamedata) do
+  local timer
+  -- Evade state
+  act.vx[id] = -f * 0.8 * evdslash.dist / evdslash.etime
+  --act.vy[id] = 55
+  --act.draw[id] = animation.draw(
+  --  gamedata, "knight", anime.evadeslash, evdslash.etime, "once", 1, 1
+  --)
+  act.draw[id] = createdraw(evdslash.etime, 1, 1)
+  timer = misc.createtimer(gd, evdslash.etime)
+  act.invincibility[id] = act.invincibility[id] + 1
+  while timer(gd) do
+    do_action()
     coroutine.yield()
   end
-  act.vx[id] = f * evds.fwddist / evds.fwdtime
-  timer = misc.createtimer(gamedata, evadeslash.fwdtime)
-  while timer(gamedata) do
-    coroutine.yield()
-  end
-  return evadeslash.run(gamedata, id)
-end
-
-function dead.run(gamedata, id)
-  gamedata.actor.draw[id] = createdrawer(gamedata, id, "dead", "once", 0, -1)
-  gamedata.actor.vx[id] = 0
-  while true do
-    coroutine.yield()
-  end
-end
-
-function control.update(gamedata, id, colreq)
-  local ustam = gamedata.actor.usedstamina[id] or 0
-  ustam = ustam - stamregen * gamedata.system.dt
-  if ustam < 0 then
-    gamedata.actor.usedstamina[id] = nil
-  else
-    gamedata.actor.usedstamina[id] = ustam
-  end
-  colreq = colreq or {}
-  table.insert(colreq, fetchhitbox(gamedata, id, "body"))
-  return coroutine.yield(colreq)
-end
-
-function control.begin(gamedata, id)
-  --local co = coroutine.create(idle.run)
-  local co = coroutine.create(evadeslash.run)
-  return control.run(co, gamedata, id)
-end
-
-function control.run(co, gamedata, id)
-  local actor = gamedata.actor
-  local hp = actor.health[id]
-  local dmg = actor.damage[id] or 0
-  if hp <= dmg then return dead.run(gamedata, id) end
-  local status, colreq = coroutine.resume(co, gamedata, id)
-  colreq = colreq or {}
-  local do_resume = #colreq > 0
-  local colres = control.update(gamedata, id, colreq)
-  if do_resume then status = coroutine.resume(co, colres) end
-  return control.run(co, coroutine.yield())
-end
-
-function actor.knight(gamedata, id, x, y)
-  local resim = gamedata.resource.images
-  gamedata.actor.claimed[id] = {
-    anime = {
-      walk = initanimation(gamedata, resim[ims.walk], 48, 48, 0.2, 4),
-      idle = initanimation(gamedata, resim[ims.idle], 48, 48, 0.2, 3),
-      poke = initanimation(
-        gamedata, resim[ims.poke], 96, 48, poke.attack.ft, poke.attack.f
-      ),
-      prepoke = initanimation(
-        gamedata, resim[ims.prepoke], 96, 48, poke.windup.ft, poke.windup.f
-      ),
-      postpoke = initanimation(
-        gamedata, resim[ims.postpoke], 96, 48, poke.recover.ft, poke.recover.f
-      ),
-      upslash = initanimation(
-        gamedata, resim[ims.upslash], 96, 96, upslash.attack.ft,
-        upslash.attack.f
-      ),
-      preupslash = initanimation(
-        gamedata, resim[ims.preupslash], 96, 96, upslash.windup.ft,
-        upslash.windup.f
-      ),
-      postupslash = initanimation(
-        gamedata, resim[ims.postupslash], 96, 96, upslash.recover.ft,
-        upslash.recover.f
-      ),
-      evadeslash = initanimation(
-        gamedata, resim[ims.evadeslash], 96, 96, 0.1, 7 -- Insert proper defines
-      ),
-      dead = initanimation(
-        gamedata, resim[ims.dead], 96, 48, 0.5, 4
-      ),
-    },
-    hitbox = {
-      follow = initresource(
-        gamedata.hitbox, coolision.createaxisbox, -pfollow.w, -pfollow.h,
-        pfollow.w * 2, pfollow.h * 2, nil, gamedata.hitboxtypes.allybody
-      ),
-      poke = initresource(
-        gamedata.hitbox, coolision.createaxisbox, -14, 3,
-        phit.w, phit.h , nil, gamedata.hitboxtypes.allybody
-      ),
-      upslash_f2 = initresource(
-        gamedata.hitbox, coolision.createaxisbox, 16, -10,
-        20, 31, nil, gamedata.hitboxtypes.allybody
-      ),
-      upslash_f3 = initresource(
-        gamedata.hitbox, coolision.createaxisbox, -16, 17,
-        45, 19, nil, gamedata.hitboxtypes.allybody
-      ),
-      body = initresource(
-        gamedata.hitbox, coolision.createaxisbox, -w, -h, w * 2, h * 2,
-        gamedata.hitboxtypes.enemybody
-      ),
-      antistuck = initresource(
-        gamedata.hitbox, coolision.createaxisbox, -15, -h, 30, h * 2,
-        nil, {gamedata.hitboxtypes.enemybody, gamedata.hitboxtypes.allybody}
-      ),
-    }
-  }
-
-  local act = gamedata.actor
-  act.x[id] = x
-  act.y[id] = y
-  act.width[id] = w
-  act.height[id] = h
+  act.invincibility[id] = act.invincibility[id] - 1
+  -- Windup state
   act.vx[id] = 0
   act.vy[id] = 0
-  act.face[id] = 1
-
-  act.health[id] = 20
-  act.stamina[id] = 2
-
-  act.control[id] = coroutine.create(control.begin)
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.evadeslash, evdslash.wtime, "once", 3, 4
+  )
+--  act.draw[id] = createdraw(evdslash.wtime, 3, 4)
+  timer = misc.createtimer(gd, evdslash.wtime)
+  while timer(gd) do
+    do_action()
+    coroutine.yield()
+  end
+  -- Attack state
+  act.vx[id] = f * evdslash.dist / evdslash.atime
+  --act.vy[id] = 30
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.evadeslash, evdslash.atime, "once", 5, 7
+  )
+  --act.draw[id] = createdraw(evdslash.atime, 5, 7)
+  timer = misc.createtimer(gd, evdslash.atime)
+  local seq = combat.hitboxseq(gamedata, hitbox.evadeslash, 3, evdslash.atime)
+  local dmg = combat.createoneshotdamage(hitbox.evadeslash, 1)
+  while timer(gd) do
+    do_action(gamedata, id, seq, dmg)
+    coroutine.yield()
+  end
+  -- Recover
+  act.vx[id] = 0
+  act.vy[id] = 0
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.evadeslash, evdslash.rtime, "once", 3, 3
+  )
+  timer = misc.createtimer(gd, evdslash.rtime)
+  while timer(gd) do
+    do_action()
+    coroutine.yield()
+  end
+  do_action()
 end
+
+-- Define actions
+function action.idle(gamedata, id)
+  local act = gamedata.actor
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.idle, 0.2 * 4, "bounce"
+  )
+  act.vx[id] = 0
+  local next_action
+  while not next_action do
+    next_action = do_action(gamedata, id)
+    coroutine.yield()
+  end
+  return next_action
+end
+
+-- Define global meta function
+
+function control.begin(gamedata, id)
+  return control.run(gamedata, id)
+end
+function control.run(gamedata, id)
+  local act = gamedata.actor
+  -- Obtain hitboxes
+  local colreq = {}
+  for _, eid in pairs(entities) do
+    local state, cr = coroutine.resume(act.action[eid], gamedata, eid)
+    colreq[eid] = cr or {}
+  end
+  -- Add compulsory hitboxes
+  for id, cr in pairs(colreq) do
+    table.insert(cr, hitbox.body)
+    --table.insert(cr, hitbox.antistuck)
+    table.insert(cr, hitbox.follow)
+  end
+  -- Submit for collision detection
+  local colres = coroutine.yield(colreq)
+  -- Give hitbox results to each entity and obtain combat requests
+  local combatreq = {}
+  for _, entid in pairs(entities) do
+    local _, cr = coroutine.resume(act.action[entid], colres)
+    if cr then combatreq[entid] = cr end
+  end
+  local combatres = coroutine.yield(combatreq)
+  -- Now decide course of action based on the previous frame data
+  -- FIX: DOES nothing
+  for _, eid in pairs(entities) do
+    local state, accept = coroutine.resume(act.action[eid], combatres)
+  end
+  -- HACK
+  -- Release and prepare for next fram
+  -- Finally run drawers
+  for _, eid in pairs(entities) do
+    --coroutine.resume(act.draw[eid], gamedata.system.dt, act.x[eid], act.y[eid])
+    animation.entitydraw(gamedata, eid, act.draw[eid])
+  end
+  return control.run(coroutine.yield())
+end
+
+-- AI
+function ai.knight(gd, id, col, com, pid)
+  local act = gamedata.actor
+  local bias = {
+    poke = {},
+    upslash = {},
+  }
+  local stamcost = {
+    poke = 1,
+    upslash = 1,
+  }
+  local attacks = {
+    poke = action.poke,
+    upslash = action.upslash,
+  }
+  while true do
+    for _, id in pairs(entities) do
+      if coroutine.status(act.action[id]) == "dead" then
+        -- Roll for action
+        
+      end
+    end
+    gd, id, col, com = coroutine.yield()
+  end
+end
+
+function loaders.knight(gamedata)
+  -- Create atlas
+  local im = gfx.newImage("res/knight.png")
+  gamedata.resource.atlas.knight = gfx.newSpriteBatch(im, 200, "stream")
+  local index = require "res/knight"
+  local initanime = function(key, frames, ox, oy)
+    anime[key] = initresource(
+      gamedata.animations, animation.init, im, index[key], frames, ox, oy
+    )
+  end
+  -- Initialize animation frames
+  initanime("walk", 4, 27, 26)
+  initanime("idle", 3, 24, 26)
+  initanime("dead", 4, 48, 25)
+  initanime("poke", 4, 48, 26)
+  initanime("evadeslash", 7, 48, 74)
+  initanime("upslash", 5, 51, 74)
+  -- Create hitboxes
+  local ht = gamedata.hitboxtypes
+  hitbox.follow = initresource(
+    gamedata.hitbox, coolision.createcenterbox, 600, 5, nil, ht.allybody
+  )
+  hitbox.body = initresource(
+    gamedata.hitbox, coolision.createcenterbox, width * 2, height * 2,
+    ht.enemybody
+  )
+  hitbox.poke = {
+    [2] = initresource(
+      gamedata.hitbox, coolision.createaxisbox, -14, 3, 52, 3 , nil, ht.allybody
+    ),
+  }
+  hitbox.upslash = {
+    [2] = initresource(
+      gamedata.hitbox, coolision.createaxisbox, 16, -10, 20, 31, nil,
+      ht.allybody
+    ),
+    [3] = initresource(
+      gamedata.hitbox, coolision.createaxisbox, -16, 17, 45, 19, nil,
+      ht.allybody
+    ),
+  }
+  -- Begins with frame 5
+  hitbox.evadeslash = {
+    [1] = initresource(
+      gamedata.hitbox, coolision.createaxisbox, -23, 20, 25, 20, nil, ht.allybody
+    ),
+    [2] = initresource(
+      gamedata.hitbox, coolision.createaxisbox, 10, -6, 22, 32, nil, ht.allybody
+    ),
+    [3] = initresource(
+      gamedata.hitbox, coolision.createaxisbox, 10, -6, 10, 16, nil, ht.allybody
+    )
+  }
+  hitbox.antistuck = initresource(
+    gamedata.hitbox, coolision.createcenterbox, 30, height * 2,
+    nil, {gamedata.hitboxtypes.enemybody, gamedata.hitboxtypes.allybody}
+  )
+  -- Set control script
+  gamedata.global.control.knight = coroutine.create(control.begin)
+end
+
+-- Define global APIs
+function knight.add(gamedata, x, y)
+  local id = initresource(gamedata.actor, function(act, id)
+    act.x[id] = x
+    act.y[id] = y
+    act.width[id] = width
+    act.height[id] = height
+    act.vx[id] = 0
+    act.vy[id] = 0
+    act.face[id] = 1
+
+    act.health[id] = 20
+    act.stamina[id] = 2
+    act.invincibility[id] = 0
+    act.action[id] = coroutine.create(action.idle)
+  end)
+  print("create", id)
+  table.insert(entities, id)
+  return id
+end
+
+knight.action = action

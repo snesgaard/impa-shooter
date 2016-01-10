@@ -24,8 +24,8 @@ light.draw = function(gamedata, canvas, x, y)
   gfx.setShader(shader)
   shader:send("normalmap", gamedata.resource.images[normalmap])
   shader:send(
-    "campos", {math.floor(-x),
-    math.floor(y - gamedata.visual.height / gamedata.visual.scale)}
+    "campos", {-x,
+    y - gamedata.visual.height}
   )
   shader:send("scale", 1.0 / gamedata.visual.scale)
   shader:send("ambientcoeffecient", light.ambient.coeffecient)
@@ -71,7 +71,7 @@ light.draw = function(gamedata, canvas, x, y)
     shader:send("orthodir", unpack(lodata.dir))
     shader:send("orthocoeffecient", unpack(lodata.coeff))
   end
-  gfx.draw(canvas, 0, 0, 0, gamedata.visual.scale)
+  gfx.draw(canvas, 0, 0, 0)
   gfx.setShader()
 end
 
@@ -101,12 +101,12 @@ local function setuportholight(gamedata, color, dir, coeff)
 end
 
 light.testsetup = function(gamedata)
-  --setuppointlight(gamedata, {1.0, 0.3, 0.3}, {200, -200, 30}, 1e-4)
+  --setuppointlight(gamedata, {1.0, 1.0, 1.0}, {200, -200, 200}, 1e-5)
   --setuppointlight(gamedata, {0.0, 1.0, 0.0}, {400, -200, 60}, 1e-4)
   --setuppointlight(gamedata, {0.0, 0.0, 1.0}, {60, -200, 60}, 1e-5)
 
-  setuportholight(gamedata, {1, 1, 1}, {-1, 1, 1}, 0.0)
+  setuportholight(gamedata, {1, 1, 1}, {-1, 1, 1}, 0.6)
 
-  gamedata.light.ambient.coeffecient = 0.2
+  gamedata.light.ambient.coeffecient = 0.4
   gamedata.light.ambient.color = {1, 1, 1}
 end
