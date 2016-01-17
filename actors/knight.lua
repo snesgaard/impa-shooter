@@ -30,26 +30,172 @@ local evdslash = {
   rtime = 0.3,
 }
 
--- Define actions
+-- Overrule do_action so it always includes body hitbox
+local raw_do_action = do_action
+local do_action = function(gd, id, col, com)
+  local supercol
+  if col then
+    supercol = function(gd, id)
+      local r = col(gd, id)
+      table.insert(r, hitbox.body)
+      return r
+    end
+  else
+    supercol = function(gd, id)
+      return {hitbox.body}
+    end
+  end
+  raw_do_action(gd, id, supercol, com)
+end
+
+
 local action = {}
 local control = {}
-local ai = {}
 
-function action.poke(gamedata, id, other)
+function control.die(gd, id, fd)
+  gd.actor.action[id] = coroutine.create(action.die)
+  while true do
+    coroutine.yield()
+  end
+end
+
+local function attacktable(other)
+  local ac = action
+  return {
+    function(gd, id)
+      ac.goto(gd, id, other)
+      ac.poke(gd, id, other)
+      local dx = gd.actor.x[other] - gd.actor.x[id]
+      local f = gd.actor.face[id]
+      if f * dx < 150 and f * dx > 0 then
+        ac.poke(gd, id, other)
+      end
+      do_action(gd, id)
+    end,
+    function(gd, id)
+      ac.goto(gd, id, other)
+      ac.upslash(gd, id, other)
+      local dx = gd.actor.x[other] - gd.actor.x[id]
+      local f = gd.actor.face[id]
+      if f * dx > -150 and f * dx < 0 then
+        ac.poke(gd, id, other)
+      else
+        do_action(gd, id)
+        return
+      end
+      local dx = gd.actor.x[other] - gd.actor.x[id]
+      local f = gd.actor.face[id]
+      if f * dx < 150 and f * dx > 0 then
+        ac.upslash(gd, id, other)
+      end
+      do_action(gd, id)
+    end,
+  }
+end
+function control.decide(gamedata, id, fd)
+  local act = gamedata.actor
+  act.action[id] = coroutine.create(function(gd, id)
+    return action.idle(gd, id)
+  end)
+  -- Chill first
+  local timer = misc.createtimer(gamedata, love.math.random() * 0.5 + 0.2)
+  while timer(gamedata) do
+    gamedata, id, fd = coroutine.yield()
+  end
+  -- Do we want to recover stamina first
+  local do_recover = act.usedstamina[id] and love.math.random() > 0.1
+  if ai.staminaleft(gamedata, id) < 1 or do_recover then
+    --act.action[id] = coroutine.create(function(gd, id)
+    --  return action.retreat(gd, id, pid)
+    --end)
+    while act.usedstamina[id] ~= nil do
+      gamedata, id, fd = coroutine.yield()
+    end
+    --act.action[id] = coroutine.create(action.idle)
+  end
+  while true do
+    local pid = fd.playerid
+    local dx = math.abs(act.x[pid] - act.x[id])
+    local dy = math.abs(act.y[pid] - act.y[id])
+    if dy < 300 and dx < 300 and ai.staminaleft(gamedata, id) >= 1 then
+      local attack = attacktable(pid)
+      local a = attack[love.math.random(#attack)]
+      act.usedstamina[id] = (act.usedstamina[id] or 0) + 1
+      return control.attack(gamedata, id, fd, a)
+    end
+    gamedata, id, fd = coroutine.yield()
+  end
+end
+function control.attack(gamedata, id, fd, attack)
+  local act = gamedata.actor
+  act.action[id] = coroutine.create(attack)
+  local do_check = true
+  while coroutine.status(act.action[id]) ~= "dead" do
+    if do_check and #(fd.combatres[id] or {}) > 0 then
+      -- Only evadeslash some times
+      if love.math.random() >= 0.25 then
+        ai.turn(gamedata, id, fd.combatres[id][1].from)
+        return control.evadeattack(gamedata, id, fd)
+      end
+    end
+    gamedata, id, fd = coroutine.yield()
+  end
+  return control.decide(gamedata, id, fd)
+end
+function control.evadeattack(gamedata, id, fd)
+  local act = gamedata.actor
+  act.action[id] = coroutine.create(action.evadeslash)
+  while coroutine.status(act.action[id]) ~= "dead" do
+    gamedata, id, fd = coroutine.yield()
+  end
+  return control.decide(gamedata, id, fd)
+end
+
+-- Define actions
+function action.idle(gamedata, id)
+  local act = gamedata.actor
+  local timer = misc.createtimer(gamedata, time)
+  gamedata.actor.vx[id] = 0
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.idle, 0.2 * 4, "bounce"
+  )
+  while true do
+    do_action(gamedata, id)
+    coroutine.yield()
+  end
+end
+function action.retreat(gamedata, id, other)
+  local act = gamedata.actor
+  local s = 1
+  act.draw[id] = animation.draw(
+    gamedata, "knight", anime.walk, 0.2 * 4 / s, "repeat"
+  )
+  ai.movefrom(gamedata, id, other, speed * s, hitbox.antistuck, 35)
+end
+function action.goto(gamedata, id, other)
   local act = gamedata.actor
   local timer
   act.draw[id] = animation.draw(
     gamedata, "knight", anime.walk, 0.2 * 4 / 1.5, "repeat"
   )
   ai.moveto(gamedata, id, other, speed * 1.5, hitbox.antistuck, 35)
+end
+function action.poke(gamedata, id, other)
+  local act = gamedata.actor
+  local timer
+  --act.draw[id] = animation.draw(
+  --  gamedata, "knight", anime.walk, 0.2 * 4 / 1.5, "repeat"
+  --)
+  --ai.moveto(gamedata, id, other, speed * 1.5, hitbox.antistuck, 35)
   act.vx[id] = 0
+  ai.turn(gamedata, id, other)
   -- Windup
   act.draw[id] = animation.draw(
     gamedata, "knight", anime.poke, poke.wtime, "once", 1, 1
   )
   timer = misc.createtimer(gamedata, poke.wtime)
   while timer(gamedata) do
-    do_action()
+    do_action(gamedata, id)
     coroutine.yield()
   end
   -- Attack
@@ -69,20 +215,19 @@ function action.poke(gamedata, id, other)
   )
   timer = misc.createtimer(gamedata, poke.rtime)
   while timer(gamedata) do
-    do_action()
+    do_action(gamedata, id)
     coroutine.yield()
   end
-  -- Stub
-  do_action()
 end
 
 function action.upslash(gamedata, id, other)
   local act = gamedata.actor
   local timer
-  act.draw[id] = animation.draw(
-    gamedata, "knight", anime.walk, 0.2 * 4, "repeat"
-  )
-  ai.moveto(gamedata, id, other, speed, hitbox.antistuck, 35)
+  ai.turn(gamedata, id, other)
+  --act.draw[id] = animation.draw(
+  --  gamedata, "knight", anime.walk, 0.2 * 4, "repeat"
+  --)
+  --ai.moveto(gamedata, id, other, speed, hitbox.antistuck, 35)
   act.vx[id] = 0
   -- Windup
   act.draw[id] = animation.draw(
@@ -90,7 +235,7 @@ function action.upslash(gamedata, id, other)
   )
   timer = misc.createtimer(gamedata, upslash.wtime)
   while timer(gamedata) do
-    do_action()
+    do_action(gamedata, id)
     coroutine.yield()
   end
   -- Attack
@@ -112,27 +257,25 @@ function action.upslash(gamedata, id, other)
   )
   timer = misc.createtimer(gamedata, upslash.rtime)
   while timer(gamedata) do
-    do_action()
+    do_action(gamedata, id)
     coroutine.yield()
   end
-  -- Stub
-  do_action()
 end
 
 function action.evadeslash(gd, id)
   local cs = trail.chain(
     trail.color(
-      gamedata, "knight", {50, 200, 200, 100}, {0, 50, 150, 0}
+      gd, "knight", {50, 200, 200, 100}, {0, 50, 150, 0}
     ),
     trail.scale(1, 1.5)
   )
   local createdraw = function(time, from, to)
     return trail.drawer(
-      gamedata, 0, evdslash.etime * 0.5, "knight", anime.evadeslash,
+      gd, 0, evdslash.etime * 0.5, "knight", anime.evadeslash,
       time, cs, "once", from, to
     )
   end
-  local act = gamedata.actor
+  local act = gd.actor
   local f = act.face[id]
   local timer
   -- Evade state
@@ -145,7 +288,7 @@ function action.evadeslash(gd, id)
   timer = misc.createtimer(gd, evdslash.etime)
   act.invincibility[id] = act.invincibility[id] + 1
   while timer(gd) do
-    do_action()
+    do_action(gd, id)
     coroutine.yield()
   end
   act.invincibility[id] = act.invincibility[id] - 1
@@ -153,123 +296,51 @@ function action.evadeslash(gd, id)
   act.vx[id] = 0
   act.vy[id] = 0
   act.draw[id] = animation.draw(
-    gamedata, "knight", anime.evadeslash, evdslash.wtime, "once", 3, 4
+    gd, "knight", anime.evadeslash, evdslash.wtime, "once", 3, 4
   )
 --  act.draw[id] = createdraw(evdslash.wtime, 3, 4)
   timer = misc.createtimer(gd, evdslash.wtime)
   while timer(gd) do
-    do_action()
+    do_action(gd, id)
     coroutine.yield()
   end
   -- Attack state
   act.vx[id] = f * evdslash.dist / evdslash.atime
   --act.vy[id] = 30
   act.draw[id] = animation.draw(
-    gamedata, "knight", anime.evadeslash, evdslash.atime, "once", 5, 7
+    gd, "knight", anime.evadeslash, evdslash.atime, "once", 5, 7
   )
   --act.draw[id] = createdraw(evdslash.atime, 5, 7)
   timer = misc.createtimer(gd, evdslash.atime)
-  local seq = combat.hitboxseq(gamedata, hitbox.evadeslash, 3, evdslash.atime)
+  local seq = combat.hitboxseq(gd, hitbox.evadeslash, 3, evdslash.atime)
   local dmg = combat.createoneshotdamage(hitbox.evadeslash, 1)
   while timer(gd) do
-    do_action(gamedata, id, seq, dmg)
+    do_action(gd, id, seq, dmg)
     coroutine.yield()
   end
   -- Recover
   act.vx[id] = 0
   act.vy[id] = 0
   act.draw[id] = animation.draw(
-    gamedata, "knight", anime.evadeslash, evdslash.rtime, "once", 3, 3
+    gd, "knight", anime.evadeslash, evdslash.rtime, "once", 3, 3
   )
   timer = misc.createtimer(gd, evdslash.rtime)
   while timer(gd) do
-    do_action()
+    do_action(gd, id)
     coroutine.yield()
   end
-  do_action()
+  do_action(gd, id)
 end
 
--- Define actions
-function action.idle(gamedata, id)
+function action.die(gamedata, id)
   local act = gamedata.actor
   act.draw[id] = animation.draw(
-    gamedata, "knight", anime.idle, 0.2 * 4, "bounce"
+    gamedata, "knight", anime.dead, 2.0, "once"
   )
   act.vx[id] = 0
-  local next_action
-  while not next_action do
-    next_action = do_action(gamedata, id)
-    coroutine.yield()
-  end
-  return next_action
-end
-
--- Define global meta function
-
-function control.begin(gamedata, id)
-  return control.run(gamedata, id)
-end
-function control.run(gamedata, id)
-  local act = gamedata.actor
-  -- Obtain hitboxes
-  local colreq = {}
-  for _, eid in pairs(entities) do
-    local state, cr = coroutine.resume(act.action[eid], gamedata, eid)
-    colreq[eid] = cr or {}
-  end
-  -- Add compulsory hitboxes
-  for id, cr in pairs(colreq) do
-    table.insert(cr, hitbox.body)
-    --table.insert(cr, hitbox.antistuck)
-    table.insert(cr, hitbox.follow)
-  end
-  -- Submit for collision detection
-  local colres = coroutine.yield(colreq)
-  -- Give hitbox results to each entity and obtain combat requests
-  local combatreq = {}
-  for _, entid in pairs(entities) do
-    local _, cr = coroutine.resume(act.action[entid], colres)
-    if cr then combatreq[entid] = cr end
-  end
-  local combatres = coroutine.yield(combatreq)
-  -- Now decide course of action based on the previous frame data
-  -- FIX: DOES nothing
-  for _, eid in pairs(entities) do
-    local state, accept = coroutine.resume(act.action[eid], combatres)
-  end
-  -- HACK
-  -- Release and prepare for next fram
-  -- Finally run drawers
-  for _, eid in pairs(entities) do
-    --coroutine.resume(act.draw[eid], gamedata.system.dt, act.x[eid], act.y[eid])
-    animation.entitydraw(gamedata, eid, act.draw[eid])
-  end
-  return control.run(coroutine.yield())
-end
-
--- AI
-function ai.knight(gd, id, col, com, pid)
-  local act = gamedata.actor
-  local bias = {
-    poke = {},
-    upslash = {},
-  }
-  local stamcost = {
-    poke = 1,
-    upslash = 1,
-  }
-  local attacks = {
-    poke = action.poke,
-    upslash = action.upslash,
-  }
   while true do
-    for _, id in pairs(entities) do
-      if coroutine.status(act.action[id]) == "dead" then
-        -- Roll for action
-        
-      end
-    end
-    gd, id, col, com = coroutine.yield()
+    raw_do_action(gamedata, id)
+    coroutine.yield()
   end
 end
 
@@ -330,8 +401,6 @@ function loaders.knight(gamedata)
     gamedata.hitbox, coolision.createcenterbox, 30, height * 2,
     nil, {gamedata.hitboxtypes.enemybody, gamedata.hitboxtypes.allybody}
   )
-  -- Set control script
-  gamedata.global.control.knight = coroutine.create(control.begin)
 end
 
 -- Define global APIs
@@ -345,14 +414,18 @@ function knight.add(gamedata, x, y)
     act.vy[id] = 0
     act.face[id] = 1
 
-    act.health[id] = 20
+    act.health[id] = 10
     act.stamina[id] = 2
+    act.recover[id] = 0.3
     act.invincibility[id] = 0
     act.action[id] = coroutine.create(action.idle)
+    act.control[id] = coroutine.create(control.decide)
+    act.death[id] = control.die
   end)
-  print("create", id)
   table.insert(entities, id)
   return id
 end
 
-knight.action = action
+function knight.control()
+  return coroutine.create(control.decide)
+end

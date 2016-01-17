@@ -1,3 +1,5 @@
+require "ai"
+
 loaders = loaders or {}
 shalltear = shalltear or {}
 
@@ -66,6 +68,24 @@ local function doturn(gd, id)
      gd.actor.face[id] = -1
    end
 end
+-- Overrule do_action so it always includes body hitbox
+local raw_do_action = do_action
+local do_action = function(gd, id, col, com)
+  local supercol
+  if col then
+    supercol = function(gd, id)
+      local r = col(gd, id)
+      table.insert(r, hitbox.body)
+      return r
+    end
+  else
+    supercol = function(gd, id)
+      return {hitbox.body}
+    end
+  end
+  raw_do_action(gd, id, supercol, com)
+end
+
 -- Functional tables
 local action = {}
 local control = {}
@@ -93,7 +113,13 @@ function beastdraw(gamedata, time, atid, beastid, normid, ft, mode)
 end
 
 -- Control
-function control.idle(gd, id, col, com)
+function control.die(gd, id, fd)
+  gd.actor.action[id] = coroutine.create(action.die)
+  while true do
+    coroutine.yield()
+  end
+end
+function control.idle(gd, id, fd)
   gd.actor.action[id] = coroutine.create(action.idle)
   while true do
     local rd = input.isdown(gd, key.right)
@@ -101,17 +127,17 @@ function control.idle(gd, id, col, com)
     local p = gd.system.pressed
     local gr = (p[key.right] or 0) > (p[key.left] or 0)
     if not on_ground(gd, id) then
-      return control.arial(gd, id, col, com)
+      return control.arial(gd, id, fd)
     elseif input.ispressed(gd, key.dodge) then
       input.latch(gd, key.dodge)
-      return control.evade(gd, id, col, com)
+      return control.evade(gd, id, fd)
     elseif input.ispressed(gd, key.attack) then
       input.latch(gd, key.attack)
-      return control.clawa(gd, id, col, com)
+      return control.clawa(gd, id, fd)
     elseif input.ispressed(gd, key.jump) then
       input.latch(gd, key.jump)
       dojump(gamedata, id)
-      return control.arial(gd, id, col, com)
+      return control.arial(gd, id, fd)
     elseif not rd and not ld then
       gd.actor.vx[id] = 0
     elseif rd and (not ld or gr) then
@@ -121,10 +147,10 @@ function control.idle(gd, id, col, com)
       gd.actor.face[id] = -1
       gd.actor.vx[id] = -speed
     end
-    gd, id, col, com = coroutine.yield()
+    gd, id, fd = coroutine.yield()
   end
 end
-function control.arial(gd, id, col, com)
+function control.arial(gd, id, fd)
   gd.actor.action[id] = coroutine.create(action.arial)
   while true do
     local rd = input.isdown(gd, key.right)
@@ -132,7 +158,7 @@ function control.arial(gd, id, col, com)
     local p = gd.system.pressed
     local gr = (p[key.right] or 0) > (p[key.left] or 0)
     if on_ground(gd, id) then
-      return control.idle(gd, id, col, com)
+      return control.idle(gd, id, fd)
     elseif not rd and not ld then
       gd.actor.vx[id] = 0
     elseif rd and (not ld or gr) then
@@ -142,71 +168,71 @@ function control.arial(gd, id, col, com)
       gd.actor.face[id] = -1
       gd.actor.vx[id] = -speed
     end
-    gd, id, col, com = coroutine.yield()
+    gd, id, fd = coroutine.yield()
   end
 end
-function control.clawa(gd, id, col, com)
+function control.clawa(gd, id, fd)
   gd.actor.action[id] = coroutine.create(action.clawa)
   local atimer = misc.createtimer(gd, clawa.atime)
   doturn(gd, id)
-  while atimer(gd) do gd, id, col, com = coroutine.yield() end
+  while atimer(gd) do gd, id, fd = coroutine.yield() end
   local rtimer = misc.createtimer(gd, clawa.rtime)
   while rtimer(gd) do
     if input.ispressed(gd, key.jump) then
-      return control.idle(gd, id, col, com)
+      return control.idle(gd, id, fd)
     elseif input.ispressed(gd, key.dodge) then
       input.latch(gd, key.dodge)
-      return control.evade(gd, id, col, com)
+      return control.evade(gd, id, fd)
     elseif input.ispressed(gd, key.attack) then
       input.latch(gd, key.attack)
-      return control.clawb(gd, id, col, com)
+      return control.clawb(gd, id, fd)
     end
-    gd, id, col, com = coroutine.yield()
+    gd, id, fd = coroutine.yield()
   end
-  return control.idle(gd, id, col, com)
+  return control.idle(gd, id, fd)
 end
-function control.clawb(gd, id, col, com)
+function control.clawb(gd, id, fd)
   gd.actor.action[id] = coroutine.create(action.clawb)
   local atimer = misc.createtimer(gd, clawb.atime)
   doturn(gd, id)
-  while atimer(gd) do gd, id, col, com = coroutine.yield() end
+  while atimer(gd) do gd, id, fd = coroutine.yield() end
   local rtimer = misc.createtimer(gd, clawb.rtime)
   while rtimer(gd) do
     -- Chain to next attack
     -- Jump cancelling
     if input.ispressed(gd, key.jump) then
-      return control.idle(gd, id, col, com)
+      return control.idle(gd, id, fd)
     -- Evade cancelling
     elseif input.ispressed(gd, key.dodge) then
       input.latch(gd, key.dodge)
-      return control.evade(gd, id, col, com)
+      return control.evade(gd, id, fd)
     elseif input.ispressed(gd, key.attack) then
       input.latch(gd, key.attack)
-      return control.clawc(gd, id, col, com)
+      return control.clawc(gd, id, fd)
     end
-    gd, id, col, com = coroutine.yield()
+    gd, id, fd = coroutine.yield()
   end
-  return control.idle(gd, id, col, com)
+  return control.idle(gd, id, fd)
 end
-function control.clawc(gd, id, col, com)
+function control.clawc(gd, id, fd)
   gd.actor.action[id] = coroutine.create(action.clawc)
   local atimer = misc.createtimer(gd, clawc.atime)
   doturn(gd, id)
-  while atimer(gd) do gd, id, col, com = coroutine.yield() end
+  while atimer(gd) do gd, id, fd = coroutine.yield() end
   local rtimer = misc.createtimer(gd, clawc.rtime)
   while rtimer(gd) do
     -- Jump cancelling
     if input.ispressed(gd, key.jump) then
-      return control.idle(gd, id, col, com)
+      return control.idle(gd, id, fd)
     elseif input.ispressed(gd, key.dodge) then
       input.latch(gd, key.dodge)
-      return control.evade(gd, id, col, com)
+      return control.evade(gd, id, fd)
     end
-    gd, id, col, com = coroutine.yield()
+    gd, id, fd = coroutine.yield()
   end
-  return control.idle(gd, id, col, com)
+  return control.idle(gd, id, fd)
 end
-function control.evade(gd, id, col, com)
+function control.evade(gd, id, fd)
   local act = gamedata.actor
   gd.actor.action[id] = coroutine.create(action.evade)
   local timer = misc.createtimer(gd, evade.maxtime)
@@ -218,13 +244,13 @@ function control.evade(gd, id, col, com)
       input.latch(gd, key.jump)
       exit_ctrl = control.arial
     end
-    gd, id, col, com = coroutine.yield()
+    gd, id, fd = coroutine.yield()
   end
   act.invincibility[id] = act.invincibility[id] - 1
   if exit_ctrl == control.arial then
     dojump(gd, id)
   end
-  return exit_ctrl(gd, id, col, com)
+  return exit_ctrl(gd, id, fd)
 end
 -- Actions
 function action.idle(gd, id)
@@ -233,14 +259,14 @@ function action.idle(gd, id)
       gamedata, 3.0, "shalltear", anime.beastidle, anime.idle, 0.8, "repeat"
     )
     while math.abs(gd.actor.vx[id]) < 1 do
-      do_action()
+      do_action(gd, id)
       coroutine.yield()
     end
     gd.actor.draw[id] = beastdraw(
       gamedata, 3.0, "shalltear", anime.beastrun, anime.run, 0.8, "repeat"
     )
     while math.abs(gd.actor.vx[id]) >= 1 do
-      do_action()
+      do_action(gd, id)
       coroutine.yield()
     end
   end
@@ -251,7 +277,7 @@ function action.arial(gd, id)
       gd, 3.0, "shalltear", anime.beastascend, anime.ascend, 0.2, "repeat"
     )
     while gd.actor.vy[id] > 0 do
-      do_action()
+      do_action(gd, id)
       gd, id = coroutine.yield()
     end
     local timer = misc.createtimer(gd, arial.mtime)
@@ -259,14 +285,14 @@ function action.arial(gd, id)
       gd, 3.0, "shalltear", anime.beastmidair, anime.midair, arial.mtime, "once"
     )
     while timer(gd) do
-      do_action()
+      do_action(gd, id)
       gd, id = coroutine.yield()
     end
     gd.actor.draw[id] = beastdraw(
       gd, 3.0, "shalltear", anime.beastdescend, anime.descend, 0.2, "repeat"
     )
     while gd.actor.vy[id] < 0 do
-      do_action()
+      do_action(gd, id)
       gd, id = coroutine.yield()
     end
   end
@@ -291,7 +317,7 @@ function action.clawa(gamedata, id)
     gamedata, "shalltear", anime.clawa_recov, clawa.rtime, "once"
   )
   while true do
-    do_action()
+    do_action(gamedata, id)
     gamedata, id = coroutine.yield()
   end
 end
@@ -315,7 +341,7 @@ function action.clawb(gamedata, id)
     gamedata, "shalltear", anime.clawb_recov, clawb.rtime, "once"
   )
   while true do
-    do_action()
+    do_action(gamedata, id)
     gamedata, id = coroutine.yield()
   end
 end
@@ -337,7 +363,7 @@ function action.clawc(gamedata, id)
     gamedata, "shalltear", anime.clawc_recov, clawc.rtime, "once"
   )
   while true do
-    do_action()
+    do_action(gamedata, id)
     gamedata, id = coroutine.yield()
   end
 end
@@ -362,60 +388,26 @@ function action.evade(gamedata, id)
   )
   while timer(gamedata) do
     act.vy[id] = 0
-    do_action()
+    do_action(gamedata, id)
     gamedata, id = coroutine.yield()
   end
   act.vx[id] = 0
   act.ground[id] = gamedata.system.time
   while true do
-    do_action()
+    do_action(gamedata, id)
     gamedata, id = coroutine.yield()
   end
 end
-
--- General overall control
-function control.begin(gamedata, id)
-  return control.run(gamedata, id)
-end
-function control.run(gamedata, id)
+function action.die(gamedata, id)
   local act = gamedata.actor
-  -- Obtain hitboxes
-  local colreq = {}
-  for _, eid in pairs(entities) do
-    local state, cr = coroutine.resume(act.action[eid], gamedata, eid)
-    colreq[eid] = cr or {}
+  act.draw[id] = animation.draw(
+    gamedata, "shalltear", anime.dead, 1.0, "once"
+  )
+  act.vx[id] = 0
+  while true do
+    raw_do_action(gamedata, id)
+    coroutine.yield()
   end
-  -- Add compulsory hitboxes
-  for id, cr in pairs(colreq) do
-    table.insert(cr, hitbox.body)
-  end
-  -- Submit for collision detection
-  local colres = coroutine.yield(colreq)
-  -- Give hitbox results to each entity and obtain combat results
-  --[[
-  local combatreq = fun.fmap(function(entid)
-    local state, cr = coroutine.resume(act.action[entid], colres)
-    return cr or {}
-  end, entities)
-  --]]
-  local combatreq = {}
-  for _, entid in pairs(entities) do
-    local _, cr = coroutine.resume(act.action[entid], colres)
-    if cr then combatreq[entid] = cr end
-  end
-  local combatres = coroutine.yield(combatreq)
-  -- Now decide course of action based on the previous frame data
-  -- FIX: DOES nothing
-  for _, eid in pairs(entities) do
-    local state, accept = coroutine.resume(act.action[eid])
-  end
-  -- Release and prepare for next fram
-  -- Finally run drawers
-  for _, eid in pairs(entities) do
-    --coroutine.resume(act.draw[eid], gamedata.system.dt, act.x[eid], act.y[eid])
-    animation.entitydraw(gamedata, eid, act.draw[eid])
-  end
-  return control.run(coroutine.yield())
 end
 -- Loader function
 function loaders.shalltear(gamedata)
@@ -443,7 +435,7 @@ function loaders.shalltear(gamedata)
   initanime("clawc_recov", 3, 48, 24)
   initanime("dead", 10, 24, 24)
   initanime("descend", 2, 24, 23)
-  initanime("evade", 1, 24, 24)
+  initanime("evade", 1, 20, 24)
   initanime("idle", 4, 24, 24)
   initanime("midair", 2, 24, 24)
   initanime("run", 8, 24, 24)
@@ -466,7 +458,6 @@ function loaders.shalltear(gamedata)
       gamedata.hitboxtypes.enemybody
     )
   }
-  gamedata.global.control.shalltear = coroutine.create(control.begin)
 end
 
 -- Global API
@@ -484,6 +475,8 @@ function shalltear.add(gamedata, x, y)
     act.stamina[id] = 0
     act.invincibility[id] = 0
     act.action[id] = coroutine.create(action.idle)
+    act.control[id] = coroutine.create(control.idle)
+    act.death[id] = control.die
   end)
   table.insert(entities, id)
   return id

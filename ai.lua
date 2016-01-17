@@ -45,3 +45,62 @@ function ai.moveto(gamedata, fid, tid, speed, asid, tol)
   coroutine.yield()
   return ai.moveto(gamedata, fid, tid, speed, asid, tol)
 end
+
+function ai.movefrom(gamedata, fid, tid, speed, asid, tol)
+  local dx = math.huge
+  local act = gamedata.actor
+  dx = act.x[tid] - act.x[fid]
+  local f = -dx / math.abs(dx)
+  act.face[fid] = f
+  local do_col = function(gamedata, id)
+    return {asid}
+  end
+  local do_res = function(gamedata, id, res)
+    act.vx[fid] = setspeed(gamedata, fid, speed * f, res[asid] or {})
+  end
+  do_action(gamedata, fid, do_col, do_res)
+  --[[
+  cols = coroutine.yield({asid})
+  act.vx[fid] = setspeed(gamedata, fid, speed * f, cols[asid])
+  ]]--
+  coroutine.yield()
+  return ai.movefrom(gamedata, fid, tid, speed, asid, tol)
+end
+
+function ai.chain(...)
+  local funs = {...}
+  return function(...)
+    for _, f in ipairs(funs) do f(...) end
+  end
+end
+
+function ai.turn(gd, id, other)
+  local act = gd.actor
+  if act.x[other] - act.x[id] > 0 then
+    act.face[id] = 1
+  else
+    act.face[id] = -1
+  end
+end
+
+function ai.staminaleft(gd, id)
+  local act = gd.actor
+  local s = act.stamina[id]
+  local u = act.usedstamina[id] or 0
+  return s - u
+end
+
+function ai.healthleft(gd, id)
+  local act = gd.actor
+  local h = act.health[id]
+  local d = act.damage[id] or 0
+  return h - d
+end
+
+function do_action(gamedata, id, hitbox, combat)
+  local r
+  if hitbox then r = hitbox(gamedata, id) end
+  local res = coroutine.yield(r)
+  if combat then r = combat(gamedata, id, res) else r = nil end
+  return coroutine.yield(r)
+end

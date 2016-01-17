@@ -73,7 +73,7 @@ gamedata = {
     maxhealth = {},
     maxstamina = {},
     usedstamina = {},
-    staminaregen = {},
+    recover = {},
     soak = {},
     reduce = {},
     invincibility = {},
@@ -85,8 +85,12 @@ gamedata = {
     -- Input
     latch = {},
     action = {},
+    control = {},
+    -- Visual
     draw = {},
     drawtype = {},
+    -- Reactive actions
+    death = {},
   }),
   hitbox = createresource({
     x = {},

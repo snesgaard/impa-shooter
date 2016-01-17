@@ -64,13 +64,6 @@ end
 
 -- Utility
 -- TODO FInd more suitable location for this function
-function do_action(gamedata, id, hitbox, combat)
-  local r
-  if hitbox then r = hitbox(gamedata, id) end
-  local res = coroutine.yield(r)
-  if combat then r = combat(gamedata, id, res) else r = nil end
-  return coroutine.yield(r)
-end
 function on_ground(gamedata, id)
   local buffer = 0.1 -- Add to global data if necessary
   local g = gamedata.actor.ground[id]
@@ -150,27 +143,27 @@ function love.update(dt)
   -- Gather coolision requests
   local masters = {}
   local colrequest = {}
-  for id, co in pairs(gamedata.global.control) do
-    _, masterrequest = coroutine.resume(co, gamedata, id)
-    for slave, request in pairs(masterrequest) do
-      masters[slave] = id
-      colrequest[slave] = request
-    end
+  for id, co in pairs(gamedata.actor.action) do
+    _, colrequest[id] = coroutine.resume(co, gamedata, id)
+    --for slave, request in pairs(masterrequest) do
+    --  masters[slave] = id
+    --  colrequest[slave] = request
+    --end
   end
   -- Flatten request table
   colres = coolision.docollisiondetections(gamedata, colrequest)
   -- Now obtain combat requests
   combatreq = {}
-  for id, co in pairs(gamedata.global.control) do
-    local _, subreq = coroutine.resume(co, colres)
-    for k, v in pairs(subreq or {}) do
-      combatreq[k] = v
-    end
+  for id, co in pairs(gamedata.actor.action) do
+    _, combatreq[id] = coroutine.resume(co, colres)
+    --for k, v in pairs(subreq or {}) do
+    --  combatreq[k] = v
+    --end
   end
   -- TODO: Combat engine stuff
   combatres = combat.dorequests(gamedata, combatreq)
   -- Now submit combat results to control scripts
-  for id, co in pairs(gamedata.global.control) do
+  for id, co in pairs(gamedata.actor.action) do
     coroutine.resume(co, combatres)
   end
   -- Apply the result of all results
@@ -180,11 +173,14 @@ function love.update(dt)
     for _, r in pairs(res) do
        d = d + r.dmg
     end
-    print(id, d)
     if d > 0 then
       act.damage[id] = d
       healthdisplay.add(gamedata, id)
     end
+  end
+  -- Do visualization
+  for id, drawer in pairs(gamedata.actor.draw) do
+    animation.entitydraw(gamedata, id, drawer)
   end
   healthdisplay.update(gamedata)
   -- Move all entities

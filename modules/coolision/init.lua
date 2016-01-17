@@ -129,10 +129,10 @@ coolision.groupedcd = function(
       end
     end
     for _, idb in pairs(potentialcol) do
-      if not (yup[ida] < ylow[idb] or yup[idb] < ylow[ida]) and owner[ida] ~= owner[idb] then
+      if not (yup[ida] < ylow[idb] or yup[idb] < ylow[ida]) and owner[ida].master ~= owner[idb].master then
         local sid = isseeker[ida] and ida or idb
         local hid = sid == ida and idb or ida
-        table.insert(collisions[sid], owner[hid])
+        table.insert(collisions[sid], owner[hid].master)
       end
     end
     --collisions[ida] = cols
@@ -143,6 +143,7 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
   -- Before sorting let us calculate the borders and limits of each box
   -- The structure of the code is intended to emulate SOA, cache-friendly coding
   -- style
+  -- Assign spatial data
   local xlower = {}
   local xupper = {}
   for id, boxids in pairs(colrequests) do
@@ -151,8 +152,10 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
     for _, bid in ipairs(boxids) do
       local lx = f * gamedata.hitbox.x[bid] + ax
       local hx = lx + f * gamedata.hitbox.width[bid]
-      xlower[bid] = math.min(lx, hx)
-      xupper[bid] = math.max(lx, hx)
+      --xlower[bid] = math.min(lx, hx)
+      --xupper[bid] = math.max(lx, hx)
+      table.insert(xlower, math.min(lx, hx))
+      table.insert(xupper, math.max(lx, hx))
     end
   end
   local ylower = {}
@@ -162,31 +165,36 @@ coolision.sortcoolisiongroups = function(gamedata, colrequests)
     for _, bid in ipairs(boxids) do
       local ly = gamedata.hitbox.y[bid] + ay
       local hy = ly + gamedata.hitbox.height[bid]
-      ylower[bid] = ly
-      yupper[bid] = hy
+      --ylower[bid] = ly
+      --yupper[bid] = hy
+      table.insert(ylower, ly)
+      table.insert(yupper, hy)
     end
   end
   -- Next divide into groups of seekers and hailers for easier matching
   local seekers = {}
   local hailers = {}
   local owner = {}
+  local idcount = 0
   for id, boxids in pairs(colrequests) do
     for _, bid in ipairs(boxids) do
-      owner[bid] = id
+      idcount = idcount + 1
+      --owner[bid] = id
+      owner[idcount] = {master = id, box = bid}
       --local s = gamedata.hitbox.seek[bid]
       --if s then
       --print(#gamedata.hitbox.seek[bid])
       for _, s in pairs(gamedata.hitbox.seek[bid]) do
         --print("seek plza", bid, s)
         local seektable = seekers[s] or {}
-        table.insert(seektable, bid)
+        table.insert(seektable, idcount)
         seekers[s] = seektable
       end
       --local h = gamedata.hitbox.hail[bid]
       --if h then
       for _, h in pairs(gamedata.hitbox.hail[bid]) do
         local hailtable = hailers[h] or {}
-        table.insert(hailtable, bid)
+        table.insert(hailtable, idcount)
         hailers[h] = hailtable
       end
     end
@@ -202,9 +210,10 @@ coolision.docollisiondetections = function(gamedata, colrequests)
   for type, subseekers in pairs(s) do
     for _, sid in pairs(subseekers) do
       --print("seek", type)
-      local ownid = o[sid]
-      allcols[ownid] = {}
-      allcols[ownid][sid] = {}
+      local master = o[sid].master
+      local box = o[sid].box
+      allcols[master] = {}
+      allcols[master][box] = {}
     end
   end
   local collisions = {}
@@ -218,9 +227,10 @@ coolision.docollisiondetections = function(gamedata, colrequests)
     end
   end
   for bid, coltable in pairs(collisions) do
-    local ownid = o[bid]
-    local owntable = allcols[ownid]
-    owntable[bid] = coltable
+    local master = o[bid].master
+    local box = o[bid].box
+    local owntable = allcols[master]
+    owntable[box] = coltable
   end
   return allcols
 end

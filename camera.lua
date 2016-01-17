@@ -52,8 +52,8 @@ function camera.track(pid)
   local y = 0
   return coroutine.create(function(gamedata)
     while true do
-      x = gamedata.actor.x[pid]
-      y = gamedata.actor.y[pid]
+      x = gamedata.actor.x[pid] or 0
+      y = gamedata.actor.y[pid] or 0
       coroutine.yield(x, y)
     end
   end)

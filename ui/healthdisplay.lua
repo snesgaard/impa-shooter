@@ -26,10 +26,10 @@ function healthdisplay.update(gamedata)
   local ct = gamedata.system.time
   local act = gamedata.actor
   for id, t in pairs(active) do
-    if ct - t > duration then
+    if ct - t > duration or act.health[id] == nil then
       active[id] = nil
     else
-      local hp = act.health[id] - (act.damage[id] or 0)
+      local hp = (act.health[id] or 0) - (act.damage[id] or 0)
       local srender = math.max(0, math.floor((hp - 1) / maxbig))
       local brender = math.max(0, hp - srender * maxbig)
       table.insert(todraw, {
